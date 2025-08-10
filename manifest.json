@@ -1,0 +1,34 @@
+{
+    "name": "LeetCode Debug Assistant",
+    "description": "AI-Assistant LeetCode Debugger",
+    "version": "1.0.0",
+    "manifest_version": 3,
+    "permissions": ["activeTab", "storage", "scripting"],
+    "host_permissions": [
+      "https://leetcode.cn/*",
+      "https://leetcode.com/*",
+      "https://api.openai.com/*",
+      "http://localhost:*/*"
+    ],
+    "background": {
+      "service_worker": "background.js",
+      "type": "module"
+    },
+    "options_page": "options/options.html",
+    "action": {
+      "default_popup": "popup/popup.html",
+      "default_icon": "icon/icon_16.png"
+    },
+    "content_scripts": [
+      {
+        "matches": ["https://leetcode.cn/*", "https://leetcode.com/*"],
+        "js": ["content.js"],
+        "run_at": "document_end"
+      }
+    ],
+    "icons": {
+      "16": "icon/icon_16.png",
+      "48": "icon/icon_48.png",
+      "128": "icon/icon_128.png"
+    }
+  }  

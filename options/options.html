@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode Debug Assistant — Settings</title>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; padding: 16px; }
+    label { display:block; margin-top: 12px; }
+    input, select { width: 100%; padding: 8px; margin-top: 6px; box-sizing: border-box; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    button { margin-top: 16px; padding: 8px 12px; }
+    small { color: #666; }
+  </style>
+</head>
+<body>
+  <h2>Settings</h2>
+
+  <label>
+    Provider Endpoint
+    <input id="endpoint" placeholder="https://api.openai.com/v1" />
+    <small>OpenAI-compatible /v1 endpoint. For OpenAI use: https://api.openai.com/v1</small>
+  </label>
+
+  <div class="row">
+    <label>
+      Model
+      <input id="model" placeholder="gpt-4o-mini" />
+      <small>Any chat-completions model your endpoint supports.</small>
+    </label>
+    <label>
+      Temperature
+      <input id="temperature" type="number" min="0" max="2" step="0.1" placeholder="0.2" />
+    </label>
+  </div>
+
+  <label>
+    API Key
+    <input id="apiKey" type="password" placeholder="sk-..." />
+    <small>Stored locally on your machine. The popup never sees it; only the background worker uses it.</small>
+  </label>
+
+  <button id="saveBtn">Save</button>
+  <span id="status"></span>
+
+  <script src="options.js"></script>
+</body>
+</html>
