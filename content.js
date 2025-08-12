@@ -23,7 +23,7 @@ function grabData() {
   
     return { title, code, result };
   }
-  
+  // console.log('[debug] content.js loaded');
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'GET_DATA') {
       sendResponse(grabData());
