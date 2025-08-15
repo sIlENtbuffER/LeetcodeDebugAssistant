@@ -6,9 +6,7 @@ function grabData() {
                || document.title
                || 'unknown question';
   
-    // code (monaco editor)
-    // NOTE: view-lines only contains visible lines. Works for small snippets.
-    // For long code, consider the optional Monaco injection shown below.
+    // code
     const monaco = document.querySelector('.monaco-editor');
     let code = '';
     if (monaco) {
@@ -23,7 +21,6 @@ function grabData() {
   
     return { title, code, result };
   }
-  // console.log('[debug] content.js loaded');
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'GET_DATA') {
       sendResponse(grabData());
