@@ -37,7 +37,6 @@ async function callChatCompletion({ prompt }) {
     return answer;
   }
   
-  // console.log('[debug] service worker loaded');
   // Message broker
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg?.type === 'GET_ADVICE') {
