@@ -1,0 +1,45 @@
+:root{
+  --indigo-600:#4f46e5; /* Tailwind-ish */
+  --indigo-500:#6366f1;
+  --indigo-400:#818cf8;
+}
+
+/* radius */
+.rounded-sm{border-radius:2px}
+.rounded-md{border-radius:6px}
+
+/* padding (x/y) */
+.px-2{padding-left:.5rem;padding-right:.5rem}
+.px-2\.5{padding-left:.625rem;padding-right:.625rem}
+.px-3{padding-left:.75rem;padding-right:.75rem}
+.px-3\.5{padding-left:.875rem;padding-right:.875rem}
+.py-1{padding-top:.25rem;padding-bottom:.25rem}
+.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}
+.py-2{padding-top:.5rem;padding-bottom:.5rem}
+.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}
+
+/* typography */
+.text-xs{font-size:.75rem;line-height:1rem}
+.text-sm{font-size:.875rem;line-height:1.25rem}
+.font-semibold{font-weight:600}
+.text-white{color:#fff}
+
+/* colors + hover */
+.bg-indigo-600{background-color:var(--indigo-600)}
+.hover\:bg-indigo-500:hover{background-color:var(--indigo-500)}
+
+/* shadows */
+.shadow-xs{box-shadow:0 1px 2px rgba(0,0,0,.1)}
+
+/* focus-visible outlines */
+.focus-visible\:outline-2:focus-visible{outline-width:2px;outline-style:solid}
+.focus-visible\:outline-offset-2:focus-visible{outline-offset:2px}
+.focus-visible\:outline-indigo-600:focus-visible{outline-color:var(--indigo-600)}
+
+/* dark-mode variants (triggered by system dark mode) */
+@media (prefers-color-scheme: dark){
+  .dark\:bg-indigo-500{background-color:var(--indigo-500)}
+  .dark\:hover\:bg-indigo-400:hover{background-color:var(--indigo-400)}
+  .dark\:shadow-none{box-shadow:none}
+  .dark\:focus-visible\:outline-indigo-500:focus-visible{outline-color:var(--indigo-500)}
+}
