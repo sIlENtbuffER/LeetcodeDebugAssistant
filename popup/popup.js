@@ -1,4 +1,21 @@
 // popup.js
+
+// Provider names for display
+const PROVIDER_NAMES = {
+  openai: 'OpenAI',
+  anthropic: 'Claude',
+  google: 'Gemini',
+  custom: 'Custom'
+};
+
+// Load and display current provider
+chrome.storage.local.get({ activeProvider: 'openai' }, ({ activeProvider }) => {
+  const badge = document.getElementById('providerBadge');
+  if (badge) {
+    badge.textContent = PROVIDER_NAMES[activeProvider] || 'Unknown';
+  }
+});
+
 const isLeetCode = url => /^https?:\/\/(leetcode\.com|leetcode\.cn)\//.test(url || '');
 
 const sendToContent = (tabId, msg) =>

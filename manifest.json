@@ -8,7 +8,10 @@
       "https://leetcode.cn/*",
       "https://leetcode.com/*",
       "https://api.openai.com/*",
-      "http://localhost:*/*"
+      "https://api.anthropic.com/*",
+      "https://generativelanguage.googleapis.com/*",
+      "http://localhost:*/*",
+      "https://*/*"  // Allow custom endpoints
     ],
     "background": {
       "service_worker": "background.js",

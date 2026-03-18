@@ -4,42 +4,63 @@
   <meta charset="UTF-8" />
   <title>LeetCode Debug Assistant — Settings</title>
   <style>
-    body { font: 14px/1.4 system-ui, sans-serif; padding: 16px; }
+    body { font: 14px/1.4 system-ui, sans-serif; padding: 16px; max-width: 600px; }
     label { display:block; margin-top: 12px; }
     input, select { width: 100%; padding: 8px; margin-top: 6px; box-sizing: border-box; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     button { margin-top: 16px; padding: 8px 12px; }
     small { color: #666; }
+    .hidden { display: none; }
+    .provider-section { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-top: 12px; }
+    .provider-header { display: flex; align-items: center; gap: 8px; }
+    .provider-badge { background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
   </style>
 </head>
 <body>
   <h2>Settings</h2>
 
   <label>
-    Provider Endpoint
-    <input id="endpoint" placeholder="https://api.openai.com/v1" />
-    <small>OpenAI-compatible /v1 endpoint. For OpenAI use: https://api.openai.com/v1 </small>
+    AI Provider
+    <select id="providerSelect">
+      <option value="openai">OpenAI</option>
+      <option value="anthropic">Anthropic (Claude)</option>
+      <option value="google">Google Gemini</option>
+      <option value="custom">Custom (OpenAI-compatible)</option>
+    </select>
   </label>
 
-  <div class="row">
-    <label>
-      Model
-      <input id="model" placeholder="gpt-4o-mini" />
-      <small>Any chat-completions model your endpoint supports.</small>
+  <div class="provider-section">
+    <div class="provider-header">
+      <span id="providerName" class="provider-badge">OpenAI</span>
+      <span id="providerDesc" style="color: #666;">ChatGPT and GPT models</span>
+    </div>
+
+    <label class="hidden" id="endpointLabel">
+      Endpoint
+      <input id="endpoint" placeholder="https://api.openai.com/v1" />
+      <small id="endpointHint">API base URL</small>
     </label>
+
+    <div class="row">
+      <label>
+        Model
+        <input id="model" placeholder="gpt-4o-mini" />
+        <small id="modelHint">Model identifier</small>
+      </label>
+      <label>
+        Temperature
+        <input id="temperature" type="number" min="0" max="2" step="0.1" placeholder="0.2" />
+      </label>
+    </div>
+
     <label>
-      Temperature
-      <input id="temperature" type="number" min="0" max="2" step="0.1" placeholder="0.2" />
+      API Key
+      <input id="apiKey" type="password" placeholder="sk-..." />
+      <small>Stored locally on your machine. The popup never sees it; only the background worker uses it.</small>
     </label>
   </div>
 
-  <label>
-    API Key
-    <input id="apiKey" type="password" placeholder="sk-..." />
-    <small>Stored locally on your machine. Safety. The popup never sees it; only the background worker uses it.</small>
-  </label>
-
-  <button id="saveBtn">Save</button>
+  <button id="saveBtn">Save Configuration</button>
   <span id="status"></span>
 
   <script src="options.js"></script>
