@@ -47,6 +47,7 @@ const els = {
   modelHint: document.getElementById('modelHint'),
   temperature: document.getElementById('temperature'),
   apiKey: document.getElementById('apiKey'),
+  testBtn: document.getElementById('testBtn'),
   saveBtn: document.getElementById('saveBtn'),
   status: document.getElementById('status')
 };
@@ -121,6 +122,66 @@ els.saveBtn.addEventListener('click', async () => {
 
   els.status.textContent = `Saved for ${provider.name}!`;
   setTimeout(() => (els.status.textContent = ''), 2000);
+});
+
+// Test connection button
+els.testBtn.addEventListener('click', async () => {
+  const provider = PROVIDERS[currentProvider];
+  const savedData = allProvidersData[currentProvider] || {};
+  const testKey = els.apiKey.value === '********' ? savedData.apiKey : els.apiKey.value.trim();
+
+  if (!testKey) {
+    els.status.innerHTML = '<span class="error">Please enter an API key first.</span>';
+    return;
+  }
+
+  // Show loading state
+  els.testBtn.disabled = true;
+  els.testBtn.innerHTML = '<span class="spinner"></span> Testing...';
+  els.status.innerHTML = '';
+
+  try {
+    // Temporarily save test config to storage for background to use
+    const testConfig = {
+      endpoint: provider.needsEndpoint ? (els.endpoint.value.trim() || provider.defaultEndpoint) : provider.defaultEndpoint,
+      model: els.model.value.trim() || provider.defaultModel,
+      temperature: Number(els.temperature.value) || 0.2,
+      apiKey: testKey
+    };
+
+    const data = await chrome.storage.local.get({ providers: {} });
+    const originalConfig = data.providers[currentProvider];
+
+    await chrome.storage.local.set({
+      activeProvider: currentProvider,
+      providers: { ...data.providers, [currentProvider]: testConfig }
+    });
+
+    // Send test request to background
+    const response = await chrome.runtime.sendMessage({
+      type: 'TEST_CONNECTION',
+      providerId: currentProvider
+    });
+
+    // Restore original config
+    if (originalConfig) {
+      const restored = await chrome.storage.local.get({ providers: {} });
+      await chrome.storage.local.set({
+        providers: { ...restored.providers, [currentProvider]: originalConfig }
+      });
+    }
+
+    if (response.ok) {
+      els.status.innerHTML = `<span class="success">✓ Connection successful! Model: ${response.model || testConfig.model}</span>`;
+    } else {
+      els.status.innerHTML = `<span class="error">✗ Failed: ${response.error}</span>`;
+    }
+  } catch (err) {
+    els.status.innerHTML = `<span class="error">✗ Error: ${err.message}</span>`;
+  } finally {
+    els.testBtn.disabled = false;
+    els.testBtn.textContent = 'Test Connection';
+  }
 });
 
 load();

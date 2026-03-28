@@ -7,7 +7,6 @@ const PROVIDERS = {
     defaultEndpoint: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4o-mini',
     needsEndpoint: true,
-    // OpenAI-compatible API format
     formatRequest: ({ apiKey, endpoint, model, temperature, prompt }) => ({
       url: `${endpoint.replace(/\/+$/, '')}/chat/completions`,
       headers: {
@@ -37,7 +36,7 @@ const PROVIDERS = {
       body: {
         model,
         max_tokens: 4096,
-        system: 'You are a senior LeetCode debugger. Help users identify and fix bugs in their code.',
+        system: 'You are a senior LeetCode debugger.',
         messages: [{ role: 'user', content: prompt }],
         temperature
       },
@@ -67,7 +66,6 @@ const PROVIDERS = {
     defaultEndpoint: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4o-mini',
     needsEndpoint: true,
-    // Same as OpenAI format
     formatRequest: ({ apiKey, endpoint, model, temperature, prompt }) => ({
       url: `${endpoint.replace(/\/+$/, '')}/chat/completions`,
       headers: {
@@ -105,7 +103,7 @@ async function getProviderConfig() {
 }
 
 async function callChatCompletion({ prompt }) {
-  const { providerId, providerConfig, apiKey, endpoint, model, temperature } = await getProviderConfig();
+  const { providerConfig, apiKey, endpoint, model, temperature } = await getProviderConfig();
 
   if (!apiKey) {
     throw new Error(`No API key set for ${providerConfig.name}. Go to the extension Options and add your key.`);
@@ -127,7 +125,7 @@ async function callChatCompletion({ prompt }) {
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
-    throw new Error(`Upstream error: ${resp.status} ${resp.statusText}\n${text}`);
+    throw new Error(`API error: ${resp.status} ${resp.statusText}\n${text}`);
   }
 
   const json = await resp.json();
@@ -135,17 +133,54 @@ async function callChatCompletion({ prompt }) {
   return answer;
 }
 
+// Process a request in background and save result to storage (mode-specific)
+async function processRequestInBackground(prompt, mode = 'learn') {
+  const storageKey = `lastAnswer_${mode}`;
+  const statusKey = `processingStatus_${mode}`;
+
+  try {
+    await chrome.storage.local.set({ [statusKey]: 'loading' });
+    const answer = await callChatCompletion({ prompt });
+    await chrome.storage.local.set({
+      [storageKey]: answer,
+      lastAnswerTime: Date.now(),
+      [statusKey]: 'complete'
+    });
+    console.log(`[${mode}] Request completed, answer length:`, answer?.length);
+  } catch (err) {
+    console.error(`[${mode}] Request error:`, err);
+    await chrome.storage.local.set({
+      [storageKey]: `Error: ${err.message || err}`,
+      lastAnswerTime: Date.now(),
+      [statusKey]: 'error'
+    });
+  }
+}
+
 // Message broker
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg?.type === 'GET_ADVICE') {
+  if (msg?.type === 'TEST_CONNECTION') {
     (async () => {
       try {
-        const answer = await callChatCompletion({ prompt: msg.prompt });
-        sendResponse({ ok: true, answer });
+        await callChatCompletion({
+          prompt: 'Reply with just "OK" if you receive this.'
+        });
+        const config = await getProviderConfig();
+        sendResponse({ ok: true, model: config.model });
       } catch (err) {
         sendResponse({ ok: false, error: String(err.message || err) });
       }
     })();
-    return true; // keep the message channel open for async response
+    return true;
+  }
+
+  if (msg?.type === 'GET_ADVICE') {
+    console.log('[Background] Received GET_ADVICE, mode:', msg.mode);
+    // Start processing in background (fire and forget - will save to storage)
+    processRequestInBackground(msg.prompt, msg.mode);
+    sendResponse({ ok: true, processing: true });
+    return; // synchronous response
   }
 });
+
+console.log('[Background] Service worker loaded');

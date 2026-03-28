@@ -4,18 +4,124 @@
   <meta charset="UTF-8">
   <title>LeetCode Debug Assistant</title>
   <link rel="stylesheet" href="popup.css">
+  <script src="marked.min.js"></script>
+  <!-- KaTeX for LaTeX math rendering -->
+  <link rel="stylesheet" href="katex/katex.min.css">
+  <script src="katex.min.js"></script>
+  <script src="auto-render.min.js"></script>
+  <style>
+    /* Additional styles for markdown rendering */
+    #answer {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    #answer h1, #answer h2, #answer h3 {
+      margin: 0.5em 0;
+      font-weight: 600;
+    }
+    #answer h2 { font-size: 1.1em; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    #answer h3 { font-size: 1em; }
+    #answer ul, #answer ol { margin: 0.5em 0; padding-left: 1.5em; }
+    #answer li { margin: 0.25em 0; }
+    #answer code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.9em;
+    }
+    #answer pre {
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+    #answer pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+    #answer strong { font-weight: 600; }
+    #answer em { font-style: italic; }
+    #answer p { margin: 0.5em 0; }
+    #answer blockquote {
+      border-left: 3px solid #6366f1;
+      padding-left: 12px;
+      color: #6b7280;
+      margin: 8px 0;
+    }
+    /* KaTeX math styles */
+    .katex {
+      font-size: 1.05em;
+    }
+    .katex-display {
+      margin: 12px 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .button-row button {
+      flex: 1;
+    }
+    /* Mode selector segmented control */
+    .mode-selector {
+      display: flex;
+      background: #f3f4f6;
+      border-radius: 6px;
+      padding: 2px;
+      margin-bottom: 8px;
+    }
+    .mode-option {
+      flex: 1;
+      text-align: center;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.15s;
+      color: #6b7280;
+    }
+    .mode-option:hover {
+      background: rgba(255,255,255,0.5);
+    }
+    .mode-option.active {
+      background: white;
+      color: #4f46e5;
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+  </style>
 </head>
 <body>
   <div class="flex items-center justify-between gap-2 mb-2">
     <h2 class="m-0 text-sm">Debug Assistant</h2>
     <span id="providerBadge" class="text-[10px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300">OpenAI</span>
   </div>
-  <button id="analyzeBtn"type="button"
-  class="rounded-sm bg-indigo-600 px-2 py-1 text-xs font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:shadow-none dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-500">
+  <!-- Mode selector -->
+  <div class="mode-selector" id="modeSelector">
+    <div class="mode-option" data-mode="debug">Debug</div>
+    <div class="mode-option active" data-mode="learn">Learn</div>
+    <div class="mode-option" data-mode="interview">Interview</div>
+  </div>
+  <button id="analyzeBtn" type="button"
+  class="rounded-sm bg-indigo-600 px-3 py-1 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
  Debug</button>
+  <button id="clearBtn" type="button"
+  class="rounded-sm bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-sm hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">
+ Clear</button>
   <div id="loading" style="display:none">Loading...</div>
-  <pre id="answer"></pre>
-  <button id="copyBtn" style="display:none">Copy</button>
+  <div id="answer"></div>
+  <div class="button-row" id="buttonRow" style="display:none">
+    <button id="copyBtn" class="rounded-sm bg-green-600 px-3 py-1 text-xs font-bold text-white shadow-sm hover:bg-green-700">Copy</button>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>
