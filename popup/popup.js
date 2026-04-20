@@ -9,8 +9,8 @@ const PROVIDER_NAMES = {
 };
 
 // Response modes
-const MODES = ['debug', 'learn', 'interview'];
-const DEFAULT_MODE = 'learn';
+const MODES = ['debug', 'hint', 'interview'];
+const DEFAULT_MODE = 'hint';
 
 // Get current mode from storage, return default if not set
 async function getMode() {
@@ -117,8 +117,72 @@ This is a...
 ### Brute Force Approach
 Try all...`;
 
-    case 'learn':
+    case 'hint':
     default:
+      return `You are a senior algorithms tutor.
+
+Your task is to help the user discover the solution gradually.
+
+Problem:
+${title}
+
+User code:
+\`\`\`
+${code}
+\`\`\`
+
+Run result / error:
+${result}
+
+Generate progressive hints.
+
+Rules:
+
+Do NOT reveal the full solution immediately.
+
+Each hint should reveal slightly more information.
+
+Each hint should build on the user's current approach when possible.
+
+Return markdown with EXACT sections:
+
+### Hint Level 1
+Provide a subtle directional hint.
+Do not mention specific algorithm names.
+
+### Hint Level 2
+Reveal the algorithm category or problem pattern.
+
+Examples:
+DFS
+DP
+Binary Search
+Sliding Window
+Graph traversal
+Heap
+
+Brief explanation only.
+
+### Hint Level 3
+Explain the structure of the solution.
+Mention data structures and main steps.
+
+Do NOT write full code.
+
+### Hint Level 4
+Explain the key insight that makes the solution correct.
+
+### Solution
+Provide complete corrected code in the same language.
+
+Include time and space complexity in LaTeX.
+
+Be concise.
+
+Avoid giving away too much too early.
+${formatInstructions}`;
+
+    case 'learn':
       return `You are a senior algorithm tutor and debugging assistant.
 
 Problem: ${title}
@@ -204,7 +268,20 @@ async function grabViaInjection(tabId) {
 }
 
 // Render markdown to the answer div
-function renderAnswer(text) {
+async function renderAnswer(text, mode = null) {
+  // Use current mode if not specified
+  if (!mode) {
+    mode = await getMode();
+  }
+
+  // Use hint renderer for hint mode
+  if (mode === 'hint') {
+    await renderHintAnswer(text);
+    document.getElementById('buttonRow').style.display = 'none';
+    console.log('renderHintAnswer called, answer length:', text?.length);
+    return;
+  }
+
   const answerDiv = document.getElementById('answer');
   if (typeof marked !== 'undefined') {
     answerDiv.innerHTML = marked.parse(text);
@@ -301,6 +378,147 @@ function addCopyButtons() {
   });
 }
 
+// Parse hint response and create collapsible sections
+function parseHintSections(markdown) {
+  const sections = [];
+  const lines = markdown.split('\n');
+  let currentSection = null;
+  let currentContent = [];
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^###\s+(.+)$/);
+    if (headingMatch) {
+      // Save previous section
+      if (currentSection) {
+        sections.push({
+          title: currentSection,
+          content: currentContent.join('\n').trim()
+        });
+      }
+      // Start new section
+      currentSection = headingMatch[1];
+      currentContent = [];
+    } else if (currentSection) {
+      currentContent.push(line);
+    }
+  }
+
+  // Save last section
+  if (currentSection) {
+    sections.push({
+      title: currentSection,
+      content: currentContent.join('\n').trim()
+    });
+  }
+
+  return sections;
+}
+
+// Render hint answer with collapsible sections
+async function renderHintAnswer(markdown) {
+  const answerDiv = document.getElementById('answer');
+  const sections = parseHintSections(markdown);
+
+  // Create container for hint sections
+  const container = document.createElement('div');
+  container.className = 'hint-container';
+
+  sections.forEach((section, index) => {
+    const isSolution = section.title.toLowerCase().includes('solution');
+    const isLevel1 = section.title.toLowerCase().includes('hint level 1');
+
+    // Create section wrapper
+    const sectionDiv = document.createElement('div');
+    sectionDiv.className = `hint-section ${isSolution ? 'hint-solution' : ''}`;
+
+    // Create header
+    const header = document.createElement('div');
+    header.className = 'hint-header';
+    header.innerHTML = `<span class="hint-title">${section.title}</span>`;
+
+    // Create content area
+    const content = document.createElement('div');
+    content.className = 'hint-content';
+
+    // Level 1 is always expanded, others collapsed
+    if (isLevel1) {
+      content.classList.add('expanded');
+      sectionDiv.classList.add('expanded');
+    } else {
+      content.classList.add('collapsed');
+      sectionDiv.classList.add('collapsed');
+    }
+
+    // Parse markdown content for this section
+    if (typeof marked !== 'undefined') {
+      content.innerHTML = marked.parse(section.content);
+    } else {
+      content.textContent = section.content;
+    }
+
+    // Add "Show next hint" button (only for non-last sections before solution)
+    if (index < sections.length - 1) {
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'hint-next-btn';
+      nextBtn.textContent = 'Show next hint';
+      nextBtn.addEventListener('click', () => {
+        // Find next collapsed section and expand it
+        const nextCollapsed = container.querySelectorAll('.hint-section.collapsed');
+        if (nextCollapsed.length > 0) {
+          const next = nextCollapsed[0];
+          next.classList.remove('collapsed');
+          next.classList.add('expanded');
+          next.querySelector('.hint-content').classList.remove('collapsed');
+          next.querySelector('.hint-content').classList.add('expanded');
+
+          // Hide this button after clicking
+          nextBtn.style.display = 'none';
+
+          // Render LaTeX in newly revealed content
+          if (typeof renderMathInElement !== 'undefined') {
+            renderMathInElement(next.querySelector('.hint-content'), {
+              delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+              ],
+              throwOnError: false
+            });
+          }
+
+          // Add copy buttons to new code blocks
+          addCopyButtons();
+        }
+      });
+      header.appendChild(nextBtn);
+    }
+
+    sectionDiv.appendChild(header);
+    sectionDiv.appendChild(content);
+    container.appendChild(sectionDiv);
+  });
+
+  answerDiv.innerHTML = '';
+  answerDiv.appendChild(container);
+
+  // Render LaTeX for initially visible content
+  if (typeof renderMathInElement !== 'undefined') {
+    renderMathInElement(container, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false},
+        {left: '\\(', right: '\\)', display: false},
+        {left: '\\[', right: '\\]', display: true}
+      ],
+      throwOnError: false
+    });
+  }
+
+  // Add copy buttons to code blocks
+  addCopyButtons();
+}
+
 // Save answer to storage for persistence (mode-specific)
 async function saveAnswer(text, mode) {
   const storageKey = `lastAnswer_${mode}`;
@@ -345,7 +563,7 @@ async function loadSavedAnswer() {
     console.log('✓ Showing loading UI for mode:', currentMode);
   } else if (data[storageKey]) {
     console.log('✓ Rendering saved answer');
-    renderAnswer(data[storageKey]);
+    renderAnswer(data[storageKey], currentMode);
   } else {
     console.log('✓ No saved answer for this mode');
   }
@@ -400,7 +618,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
             chrome.storage.local.get([storageKey], (answerData) => {
               console.log(`Got answer from storage, mode: ${mode}, length:`, answerData[storageKey]?.length);
               if (answerData[storageKey]) {
-                renderAnswer(answerData[storageKey]);
+                renderAnswer(answerData[storageKey], mode);
               }
             });
           } else if (changes[statusKey].newValue === 'error') {
@@ -433,7 +651,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
             const statusKey = `processingStatus_${mode}`;
             chrome.storage.local.get([statusKey], (statusData) => {
               if (statusData[statusKey] !== 'loading') {
-                renderAnswer(changes[key].newValue);
+                renderAnswer(changes[key].newValue, mode);
               }
             });
           }
@@ -541,7 +759,7 @@ modeOptions?.forEach(opt => {
         buttonRow.style.display = 'none';
       } else if (data[storageKey]) {
         // Show saved answer for this mode
-        renderAnswer(data[storageKey]);
+        renderAnswer(data[storageKey], selectedMode);
       } else {
         // No saved answer for this mode, clear display
         answerDiv.innerHTML = '';

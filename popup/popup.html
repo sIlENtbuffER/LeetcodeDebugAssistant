@@ -98,6 +98,76 @@
       font-weight: 600;
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
+    /* Hint mode collapsible sections */
+    .hint-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .hint-section {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+    .hint-section.expanded {
+      background: #f9fafb;
+    }
+    .hint-section.collapsed {
+      background: #f3f4f6;
+    }
+    .hint-section.hint-solution {
+      border-color: #6366f1;
+      border-width: 2px;
+    }
+    .hint-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .hint-title {
+      font-weight: 600;
+      font-size: 0.9em;
+      color: #374151;
+    }
+    .hint-section.hint-solution .hint-title {
+      color: #4f46e5;
+    }
+    .hint-next-btn {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .hint-next-btn:hover {
+      background: #4338ca;
+    }
+    .hint-content {
+      padding: 0 14px 14px;
+      overflow: hidden;
+      transition: all 0.3s ease-out;
+    }
+    .hint-content.collapsed {
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      opacity: 0;
+    }
+    .hint-content.expanded {
+      max-height: 2000px;
+      opacity: 1;
+    }
+    .hint-content h3 {
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -108,7 +178,7 @@
   <!-- Mode selector -->
   <div class="mode-selector" id="modeSelector">
     <div class="mode-option" data-mode="debug">Debug</div>
-    <div class="mode-option active" data-mode="learn">Learn</div>
+    <div class="mode-option active" data-mode="hint">Hint</div>
     <div class="mode-option" data-mode="interview">Interview</div>
   </div>
   <button id="analyzeBtn" type="button"

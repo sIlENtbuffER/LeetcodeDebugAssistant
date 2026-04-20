@@ -11,7 +11,7 @@
       "https://api.anthropic.com/*",
       "https://generativelanguage.googleapis.com/*",
       "http://localhost:*/*",
-      "https://*/*"  // Allow custom endpoints
+      "https://*/*"
     ],
     "background": {
       "service_worker": "background.js",
