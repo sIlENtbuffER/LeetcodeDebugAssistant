@@ -168,6 +168,41 @@
     .hint-content h3 {
       margin-top: 8px;
     }
+    /* Dark mode overrides */
+    @media (prefers-color-scheme: dark) {
+      #answer code {
+        background: #374151;
+      }
+      #answer h2 { border-bottom-color: #4b5563; }
+      #answer blockquote { color: #9ca3af; }
+      .mode-selector {
+        background: #374151;
+      }
+      .mode-option {
+        color: #9ca3af;
+      }
+      .mode-option:hover {
+        background: rgba(255,255,255,0.08);
+      }
+      .mode-option.active {
+        background: #4b5563;
+        color: #a5b4fc;
+        box-shadow: none;
+      }
+      .hint-section {
+        border-color: #4b5563;
+      }
+      .hint-section.expanded {
+        background: #1f2937;
+      }
+      .hint-section.collapsed {
+        background: #111827;
+      }
+      .hint-title {
+        color: #d1d5db;
+      }
+      #loading { color: #9ca3af; }
+    }
   </style>
 </head>
 <body>
