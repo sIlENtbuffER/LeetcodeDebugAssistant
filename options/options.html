@@ -20,6 +20,31 @@
     .provider-section { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-top: 12px; }
     .provider-header { display: flex; align-items: center; gap: 8px; }
     .provider-badge { background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    #providerDesc { color: #666; }
+    /* Dark mode overrides */
+    @media (prefers-color-scheme: dark) {
+      body { background-color: #1f2937; color: #e5e7eb; }
+      h2 { color: #f3f4f6; }
+      small, #providerDesc { color: #9ca3af; }
+      .provider-section { background: #111827; border-color: #4b5563; }
+      .provider-badge { background: #374151; color: #a5b4fc; }
+      input, select {
+        background-color: #374151;
+        color: #e5e7eb;
+        border: 1px solid #4b5563;
+      }
+      input::placeholder { color: #6b7280; }
+      button {
+        background-color: #4f46e5;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover { background-color: #4338ca; }
+      button:disabled { background-color: #374151; color: #6b7280; cursor: not-allowed; }
+      .spinner { border-color: #4b5563; border-top-color: #818cf8; }
+    }
   </style>
 </head>
 <body>
@@ -38,7 +63,7 @@
   <div class="provider-section">
     <div class="provider-header">
       <span id="providerName" class="provider-badge">OpenAI</span>
-      <span id="providerDesc" style="color: #666;">ChatGPT and GPT models</span>
+      <span id="providerDesc">ChatGPT and GPT models</span>
     </div>
 
     <label class="hidden" id="endpointLabel">
