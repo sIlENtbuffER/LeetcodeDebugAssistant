@@ -86,16 +86,22 @@ LeetcodeDebugAssistant/
 ├── manifest.json       # Chrome extension manifest (MV3)
 ├── background.js       # Service worker for AI API calls
 ├── content.js          # Content script for data extraction
+├── theme.js            # Shared theme utility (dark mode toggle)
+├── tailwind.config.js  # Tailwind CSS configuration
 ├── popup/
 │   ├── popup.html      # Popup UI
 │   ├── popup.js        # Popup logic
 │   ├── popup.css       # Compiled Tailwind styles
-│   └── tw.css          # Tailwind source
+│   ├── tw.css          # Tailwind source
+│   ├── marked.min.js   # Markdown renderer (vendored)
+│   ├── katex.min.js    # LaTeX math renderer (vendored)
+│   ├── auto-render.min.js  # KaTeX auto-render (vendored)
+│   └── katex/
+│       └── katex.min.css   # KaTeX styles
 ├── options/
 │   ├── options.html    # Settings page
 │   └── options.js      # Settings logic
-├── icons/              # Extension icons
-├── CLAUDE.md           # Project documentation for Claude Code
+├── icon/               # Extension icons (16/48/128px)
 ├── PRIVACY.md          # Privacy policy
 └── README.md           # This file
 ```
