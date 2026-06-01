@@ -8,7 +8,7 @@
     label { display:block; margin-top: 12px; }
     input, select { width: 100%; padding: 8px; margin-top: 6px; box-sizing: border-box; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    button { margin-top: 16px; padding: 8px 12px; }
+    button { padding: 8px 12px; }
     small { color: #666; }
     .hidden { display: none; }
     .success { color: #16a34a; }
@@ -21,34 +21,49 @@
     .provider-header { display: flex; align-items: center; gap: 8px; }
     .provider-badge { background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
     #providerDesc { color: #666; }
+    .theme-selector { display: flex; background: #f3f4f6; border-radius: 6px; padding: 2px; margin-top: 6px; }
+    .theme-option { flex: 1; text-align: center; padding: 6px 12px; font-size: 13px; cursor: pointer; border-radius: 4px; transition: all 0.15s; color: #6b7280; border: none; background: none; }
+    .theme-option:hover { background: rgba(0,0,0,0.05); }
+    .theme-option.active { background: white; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     /* Dark mode overrides */
-    @media (prefers-color-scheme: dark) {
-      body { background-color: #1f2937; color: #e5e7eb; }
-      h2 { color: #f3f4f6; }
-      small, #providerDesc { color: #9ca3af; }
-      .provider-section { background: #111827; border-color: #4b5563; }
-      .provider-badge { background: #374151; color: #a5b4fc; }
-      input, select {
-        background-color: #374151;
-        color: #e5e7eb;
-        border: 1px solid #4b5563;
-      }
-      input::placeholder { color: #6b7280; }
-      button {
-        background-color: #4f46e5;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      button:hover { background-color: #4338ca; }
-      button:disabled { background-color: #374151; color: #6b7280; cursor: not-allowed; }
-      .spinner { border-color: #4b5563; border-top-color: #818cf8; }
+    :root.dark body { background-color: #1f2937; color: #e5e7eb; }
+    :root.dark h2 { color: #f3f4f6; }
+    :root.dark small, :root.dark #providerDesc { color: #9ca3af; }
+    :root.dark .provider-section { background: #111827; border-color: #4b5563; }
+    :root.dark .provider-badge { background: #374151; color: #a5b4fc; }
+    :root.dark input, :root.dark select {
+      background-color: #374151;
+      color: #e5e7eb;
+      border: 1px solid #4b5563;
     }
+    :root.dark input::placeholder { color: #6b7280; }
+    :root.dark button {
+      background-color: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    :root.dark button:hover { background-color: #4338ca; }
+    :root.dark button:disabled { background-color: #374151; color: #6b7280; cursor: not-allowed; }
+    :root.dark .spinner { border-color: #4b5563; border-top-color: #818cf8; }
+    :root.dark .theme-selector { background: #374151; }
+    :root.dark .theme-option { color: #9ca3af; }
+    :root.dark .theme-option:hover { background: rgba(255,255,255,0.08); }
+    :root.dark .theme-option.active { background: #4b5563; color: #a5b4fc; box-shadow: none; }
   </style>
+  <script src="../theme.js"></script>
 </head>
 <body>
   <h2>Settings</h2>
+
+  <label style="margin-top:16px">Theme
+    <div class="theme-selector" id="themeSelector">
+      <button class="theme-option" data-theme="system">System</button>
+      <button class="theme-option" data-theme="light">Light</button>
+      <button class="theme-option" data-theme="dark">Dark</button>
+    </div>
+  </label>
 
   <label>
     AI Provider

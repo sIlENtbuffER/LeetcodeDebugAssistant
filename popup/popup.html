@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>LeetCode Debug Assistant</title>
   <link rel="stylesheet" href="popup.css">
+  <script src="../theme.js"></script>
   <script src="marked.min.js"></script>
   <!-- KaTeX for LaTeX math rendering -->
   <link rel="stylesheet" href="katex/katex.min.css">
@@ -168,41 +169,49 @@
     .hint-content h3 {
       margin-top: 8px;
     }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
     /* Dark mode overrides */
-    @media (prefers-color-scheme: dark) {
-      #answer code {
-        background: #374151;
-      }
-      #answer h2 { border-bottom-color: #4b5563; }
-      #answer blockquote { color: #9ca3af; }
-      .mode-selector {
-        background: #374151;
-      }
-      .mode-option {
-        color: #9ca3af;
-      }
-      .mode-option:hover {
-        background: rgba(255,255,255,0.08);
-      }
-      .mode-option.active {
-        background: #4b5563;
-        color: #a5b4fc;
-        box-shadow: none;
-      }
-      .hint-section {
-        border-color: #4b5563;
-      }
-      .hint-section.expanded {
-        background: #1f2937;
-      }
-      .hint-section.collapsed {
-        background: #111827;
-      }
-      .hint-title {
-        color: #d1d5db;
-      }
-      #loading { color: #9ca3af; }
+    :root.dark #answer code {
+      background: #374151;
     }
+    :root.dark #answer h2 { border-bottom-color: #4b5563; }
+    :root.dark #answer blockquote { color: #9ca3af; }
+    :root.dark .mode-selector {
+      background: #374151;
+    }
+    :root.dark .mode-option {
+      color: #9ca3af;
+    }
+    :root.dark .mode-option:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    :root.dark .mode-option.active {
+      background: #4b5563;
+      color: #a5b4fc;
+      box-shadow: none;
+    }
+    :root.dark .hint-section {
+      border-color: #4b5563;
+    }
+    :root.dark .hint-section.expanded {
+      background: #1f2937;
+    }
+    :root.dark .hint-section.collapsed {
+      background: #111827;
+    }
+    :root.dark .hint-title {
+      color: #d1d5db;
+    }
+    :root.dark .hint-section.hint-solution .hint-title {
+      color: #a5b4fc;
+    }
+    :root.dark #loading { color: #9ca3af; }
+    :root.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+    :root.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
   </style>
 </head>
 <body>
