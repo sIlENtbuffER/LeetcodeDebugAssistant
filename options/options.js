@@ -184,4 +184,27 @@ els.testBtn.addEventListener('click', async () => {
   }
 });
 
+// Theme selector
+function initThemeSelector() {
+  const selector = document.getElementById('themeSelector');
+  if (!selector) return;
+
+  const options = selector.querySelectorAll('.theme-option');
+  const current = readThemePreferenceSync();
+  options.forEach(function (opt) {
+    opt.classList.toggle('active', opt.dataset.theme === current);
+  });
+
+  options.forEach(function (opt) {
+    opt.addEventListener('click', function () {
+      const theme = opt.dataset.theme;
+      saveThemePreference(theme);
+      applyThemeClass(resolveEffectiveTheme(theme));
+      options.forEach(function (o) { o.classList.remove('active'); });
+      opt.classList.add('active');
+    });
+  });
+}
+
+initThemeSelector();
 load();
