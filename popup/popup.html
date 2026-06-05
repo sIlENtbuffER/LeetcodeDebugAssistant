@@ -115,7 +115,7 @@
       background: #f9fafb;
     }
     .hint-section.collapsed {
-      background: #f3f4f6;
+      display: none;
     }
     .hint-section.hint-solution {
       border-color: #6366f1;
@@ -153,21 +153,31 @@
     }
     .hint-content {
       padding: 0 14px 14px;
-      overflow: hidden;
-      transition: all 0.3s ease-out;
-    }
-    .hint-content.collapsed {
-      max-height: 0;
-      padding-top: 0;
-      padding-bottom: 0;
-      opacity: 0;
-    }
-    .hint-content.expanded {
-      max-height: 2000px;
-      opacity: 1;
     }
     .hint-content h3 {
       margin-top: 8px;
+    }
+    /* Step dots indicator */
+    .hint-progress {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 0;
+      margin-top: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+    .hint-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #d1d5db;
+      transition: background 0.2s;
+    }
+    .hint-dot.revealed {
+      background: #4f46e5;
     }
     /* Scrollbar */
     ::-webkit-scrollbar { width: 6px; }
@@ -200,8 +210,15 @@
     :root.dark .hint-section.expanded {
       background: #1f2937;
     }
-    :root.dark .hint-section.collapsed {
-      background: #111827;
+    :root.dark .hint-progress {
+      border-color: #4b5563;
+      background: #1f2937;
+    }
+    :root.dark .hint-dot {
+      background: #4b5563;
+    }
+    :root.dark .hint-dot.revealed {
+      background: #6366f1;
     }
     :root.dark .hint-title {
       color: #d1d5db;
