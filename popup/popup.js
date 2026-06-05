@@ -414,89 +414,133 @@ function parseHintSections(markdown) {
   return sections;
 }
 
+// Update the progress indicator UI with step dots
+function updateProgressUI(progressDiv, revealed, total) {
+  progressDiv.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('span');
+    dot.className = `hint-dot${i < revealed ? ' revealed' : ''}`;
+    progressDiv.appendChild(dot);
+  }
+}
+
 // Render hint answer with collapsible sections
 async function renderHintAnswer(markdown) {
   const answerDiv = document.getElementById('answer');
   const sections = parseHintSections(markdown);
 
+  if (sections.length === 0) {
+    answerDiv.innerHTML = typeof marked !== 'undefined'
+      ? marked.parse(markdown)
+      : markdown;
+    return;
+  }
+
+  // Track which sections are revealed (Level 1 starts revealed)
+  let revealedCount = 1;
+  const sectionDivs = [];
+
   // Create container for hint sections
   const container = document.createElement('div');
   container.className = 'hint-container';
 
+  // Add progress indicator
+  const progressDiv = document.createElement('div');
+  progressDiv.className = 'hint-progress';
+  updateProgressUI(progressDiv, revealedCount, sections.length);
+  container.appendChild(progressDiv);
+
+  // LaTeX delimiter config (shared)
+  const katexDelimiters = [
+    {left: '$$', right: '$$', display: true},
+    {left: '$', right: '$', display: false},
+    {left: '\\(', right: '\\)', display: false},
+    {left: '\\[', right: '\\]', display: true}
+  ];
+
+  // Create a "Show next hint" button
+  function createNextBtn() {
+    const btn = document.createElement('button');
+    btn.className = 'hint-next-btn';
+    btn.textContent = 'Show next hint';
+    return btn;
+  }
+
+  // Reveal the next collapsed section
+  function revealNext(clickedBtn) {
+    const nextIndex = revealedCount;
+    if (nextIndex >= sections.length) return;
+
+    const nextDiv = sectionDivs[nextIndex];
+
+    // Reveal the section
+    nextDiv.classList.remove('collapsed');
+    nextDiv.classList.add('expanded');
+
+    // Remove the clicked button
+    clickedBtn.remove();
+
+    // Increment state
+    revealedCount++;
+    updateProgressUI(progressDiv, revealedCount, sections.length);
+
+    // If more sections remain, add a new button to the just-revealed section
+    if (nextIndex < sections.length - 1) {
+      const newBtn = createNextBtn();
+      newBtn.addEventListener('click', () => revealNext(newBtn));
+      nextDiv.querySelector('.hint-header').appendChild(newBtn);
+    }
+
+    // Render LaTeX in newly revealed content
+    if (typeof renderMathInElement !== 'undefined') {
+      renderMathInElement(nextDiv.querySelector('.hint-content'), {
+        delimiters: katexDelimiters,
+        throwOnError: false
+      });
+    }
+
+    addCopyButtons();
+  }
+
+  // Build all sections
   sections.forEach((section, index) => {
     const isSolution = section.title.toLowerCase().includes('solution');
-    const isLevel1 = section.title.toLowerCase().includes('hint level 1');
 
-    // Create section wrapper
     const sectionDiv = document.createElement('div');
     sectionDiv.className = `hint-section ${isSolution ? 'hint-solution' : ''}`;
 
-    // Create header
     const header = document.createElement('div');
     header.className = 'hint-header';
     header.innerHTML = `<span class="hint-title">${section.title}</span>`;
 
-    // Create content area
     const content = document.createElement('div');
     content.className = 'hint-content';
 
-    // Level 1 is always expanded, others collapsed
-    if (isLevel1) {
-      content.classList.add('expanded');
+    // Level 1 starts expanded, everything else collapsed (hidden)
+    if (index === 0) {
       sectionDiv.classList.add('expanded');
     } else {
-      content.classList.add('collapsed');
       sectionDiv.classList.add('collapsed');
     }
 
-    // Parse markdown content for this section
+    // Parse markdown content
     if (typeof marked !== 'undefined') {
       content.innerHTML = marked.parse(section.content);
     } else {
       content.textContent = section.content;
     }
 
-    // Add "Show next hint" button (only for non-last sections before solution)
-    if (index < sections.length - 1) {
-      const nextBtn = document.createElement('button');
-      nextBtn.className = 'hint-next-btn';
-      nextBtn.textContent = 'Show next hint';
-      nextBtn.addEventListener('click', () => {
-        // Find next collapsed section and expand it
-        const nextCollapsed = container.querySelectorAll('.hint-section.collapsed');
-        if (nextCollapsed.length > 0) {
-          const next = nextCollapsed[0];
-          next.classList.remove('collapsed');
-          next.classList.add('expanded');
-          next.querySelector('.hint-content').classList.remove('collapsed');
-          next.querySelector('.hint-content').classList.add('expanded');
-
-          // Hide this button after clicking
-          nextBtn.style.display = 'none';
-
-          // Render LaTeX in newly revealed content
-          if (typeof renderMathInElement !== 'undefined') {
-            renderMathInElement(next.querySelector('.hint-content'), {
-              delimiters: [
-                {left: '$$', right: '$$', display: true},
-                {left: '$', right: '$', display: false},
-                {left: '\\(', right: '\\)', display: false},
-                {left: '\\[', right: '\\]', display: true}
-              ],
-              throwOnError: false
-            });
-          }
-
-          // Add copy buttons to new code blocks
-          addCopyButtons();
-        }
-      });
+    // Only add "Show next hint" to the first section initially
+    if (index === 0 && sections.length > 1) {
+      const nextBtn = createNextBtn();
+      nextBtn.addEventListener('click', () => revealNext(nextBtn));
       header.appendChild(nextBtn);
     }
 
     sectionDiv.appendChild(header);
     sectionDiv.appendChild(content);
     container.appendChild(sectionDiv);
+    sectionDivs.push(sectionDiv);
   });
 
   answerDiv.innerHTML = '';
@@ -505,17 +549,11 @@ async function renderHintAnswer(markdown) {
   // Render LaTeX for initially visible content
   if (typeof renderMathInElement !== 'undefined') {
     renderMathInElement(container, {
-      delimiters: [
-        {left: '$$', right: '$$', display: true},
-        {left: '$', right: '$', display: false},
-        {left: '\\(', right: '\\)', display: false},
-        {left: '\\[', right: '\\]', display: true}
-      ],
+      delimiters: katexDelimiters,
       throwOnError: false
     });
   }
 
-  // Add copy buttons to code blocks
   addCopyButtons();
 }
 
