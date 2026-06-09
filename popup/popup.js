@@ -291,6 +291,7 @@ async function renderAnswer(text, mode = null) {
   }
 
   const answerDiv = document.getElementById('answer');
+  document.body.style.width = '';
   if (typeof marked !== 'undefined') {
     answerDiv.innerHTML = marked.parse(text);
 
@@ -459,7 +460,10 @@ async function renderHintAnswer(markdown) {
 
     const header = document.createElement('div');
     header.className = 'hint-header';
-    header.innerHTML = `<span class="hint-title">${section.title}</span>`;
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'hint-title';
+    titleSpan.textContent = section.title;
+    header.appendChild(titleSpan);
 
     const content = document.createElement('div');
     content.className = 'hint-content';
@@ -494,6 +498,11 @@ async function renderHintAnswer(markdown) {
     // Reveal the section
     wrapper.classList.remove('collapsed');
     wrapper.classList.add('expanded');
+
+    // Widen popup for solution readability
+    if (wrapper.classList.contains('hint-solution')) {
+      document.body.style.width = '520px';
+    }
 
     // Remove the clicked button
     clickedBtn.remove();
@@ -767,6 +776,7 @@ modeOptions?.forEach(opt => {
       loading.style.display = 'block';
       loading.textContent = `Generating (${selectedMode})... (you can close this popup)`;
       answerDiv.innerHTML = '';
+      document.body.style.width = '';
       buttonRow.style.display = 'none';
       return; // Don't check storage - we know it's loading
     }
@@ -809,6 +819,7 @@ document.getElementById('clearBtn').addEventListener('click', async () => {
 
   // Update UI immediately
   document.getElementById('answer').innerHTML = '';
+  document.body.style.width = '';
   document.getElementById('loading').style.display = 'none';
   document.getElementById('loading').textContent = 'Loading...';
   document.getElementById('buttonRow').style.display = 'none';
