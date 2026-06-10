@@ -11,13 +11,23 @@
   <script src="katex.min.js"></script>
   <script src="auto-render.min.js"></script>
   <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      max-height: 600px;
+      overflow: hidden;
+    }
+    body > :not(#answer) {
+      flex-shrink: 0;
+    }
     /* Additional styles for markdown rendering */
     #answer {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       line-height: 1.6;
       white-space: pre-wrap;
       word-wrap: break-word;
-      max-height: 560px;
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
     }
     #answer h1, #answer h2, #answer h3 {
