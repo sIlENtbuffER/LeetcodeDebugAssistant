@@ -110,12 +110,12 @@ LeetcodeDebugAssistant/
 
 ```
 popup.js ──GET_DATA──> content.js ──{title, code, result}──> popup.js
-                                                      │
-                                                      ▼
-popup.js ──GET_ADVICE (prompt)──> background.js ──AI Provider API
-                                                      │
-                                                      ▼
-popup.js <───────────────────────────{ok, answer/error}──┘
+                                                               │
+                                                               ▼
+popup.js ──GET_ADVICE (prompt)──> background.js    ──    AI Provider API
+                                                               │
+                                                               ▼
+popup.js <───────────────────────────{ok, answer/error}────────┘
 ```
 
 ## Roadmap
