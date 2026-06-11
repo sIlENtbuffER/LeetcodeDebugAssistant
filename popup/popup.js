@@ -509,9 +509,11 @@ async function renderHintAnswer(markdown) {
     // First section starts expanded, rest are collapsed
     if (index === 0) {
       sectionDiv.classList.add('expanded');
+      content.classList.add('expanded');
       sectionDiv.setAttribute('aria-hidden', 'false');
     } else {
       sectionDiv.classList.add('collapsed');
+      content.classList.add('collapsed');
       sectionDiv.setAttribute('aria-hidden', 'true');
     }
 
@@ -538,6 +540,8 @@ async function renderHintAnswer(markdown) {
     // Reveal the section
     wrapper.classList.remove('collapsed');
     wrapper.classList.add('expanded', 'just-revealed');
+    content.classList.remove('collapsed');
+    content.classList.add('expanded');
     wrapper.setAttribute('aria-hidden', 'false');
 
     // Remove the clicked button

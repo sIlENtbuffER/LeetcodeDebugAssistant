@@ -11,10 +11,17 @@
   <script src="katex.min.js"></script>
   <script src="auto-render.min.js"></script>
   <style>
-    body {
+    html {
       width: 450px;
       max-height: 600px;
-      overflow: hidden;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
+    body {
+      width: 450px;
+      margin: 0;
+      padding: 12px 13px 12px 12px;
+      box-sizing: border-box;
     }
     /* Additional styles for markdown rendering */
     #answer {
@@ -152,7 +159,8 @@
       overflow: hidden;
     }
     .hint-section.collapsed {
-      display: none;
+      background: #f3f4f6;
+      margin-top: 8px;
     }
     .hint-section.expanded {
       background: #f9fafb;
@@ -173,7 +181,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
+      padding: 10px 14px;
       user-select: none;
     }
     .hint-title {
@@ -200,6 +208,18 @@
     }
     .hint-content {
       padding: 0 12px 10px;
+      overflow: hidden;
+      transition: all 0.3s ease-out;
+    }
+    .hint-content.collapsed {
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      opacity: 0;
+    }
+    .hint-content.expanded {
+      max-height: 2000px;
+      opacity: 1;
     }
     .hint-content h3 {
       margin-top: 4px;
@@ -214,6 +234,7 @@
       border: 1px solid #e5e7eb;
       border-radius: 8px;
       background: #f9fafb;
+      margin-top: 12px;
     }
     .hint-dot {
       width: 8px;
@@ -255,6 +276,9 @@
     }
     :root.dark .hint-section.expanded {
       background: #1f2937;
+    }
+    :root.dark .hint-section.collapsed {
+      background: #374151;
     }
     :root.dark .hint-progress {
       border-color: #4b5563;
