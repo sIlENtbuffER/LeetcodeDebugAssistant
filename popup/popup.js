@@ -20,6 +20,42 @@ const KATEX_DELIMITERS = [
   {left: '\\[', right: '\\]', display: true}
 ];
 
+// Crossfade content update: fade out, update content, fade in.
+// Cancels any in-flight fade via stored timer ID.
+// Duration matches the CSS transition (0.15s) so swap happens when fully invisible.
+function fadeUpdate(el, content, duration = 150) {
+  if (el._fadeTimer) {
+    clearTimeout(el._fadeTimer);
+    el._fadeTimer = null;
+    el.style.opacity = '';
+  }
+  return new Promise(resolve => {
+    el.style.opacity = '0';
+    el._fadeTimer = setTimeout(() => {
+      if (typeof content === 'function') {
+        content(el);
+      } else {
+        el.innerHTML = content;
+      }
+      // Wait one frame so the browser paints the new content before fading in
+      requestAnimationFrame(() => {
+        el.style.opacity = '';
+        el._fadeTimer = null;
+        resolve();
+      });
+    }, duration);
+  });
+}
+
+// Show or hide an element using CSS class toggle instead of display:none.
+function toggleVisibility(el, show) {
+  if (show) {
+    el.classList.add('visible');
+  } else {
+    el.classList.remove('visible');
+  }
+}
+
 // Get current mode from storage, return default if not set
 async function getMode() {
   const data = await chrome.storage.local.get({ responseMode: DEFAULT_MODE });
@@ -285,15 +321,14 @@ async function renderAnswer(text, mode = null) {
   // Use hint renderer for hint mode
   if (mode === 'hint') {
     await renderHintAnswer(text);
-    document.getElementById('buttonRow').style.display = 'none';
+    toggleVisibility(document.getElementById('buttonRow'), false);
     console.log('renderHintAnswer called, answer length:', text?.length);
     return;
   }
 
   const answerDiv = document.getElementById('answer');
-  document.body.style.width = '';
   if (typeof marked !== 'undefined') {
-    answerDiv.innerHTML = marked.parse(text);
+    await fadeUpdate(answerDiv, marked.parse(text));
 
     // Render LaTeX math with KaTeX after markdown is parsed
     if (typeof renderMathInElement !== 'undefined') {
@@ -309,7 +344,7 @@ async function renderAnswer(text, mode = null) {
     // Fallback if marked isn't loaded
     answerDiv.textContent = text;
   }
-  document.getElementById('buttonRow').style.display = 'none'; // Hide the old copy button row
+  toggleVisibility(document.getElementById('buttonRow'), false);
   console.log('renderAnswer called, answer length:', text?.length);
 }
 
@@ -424,9 +459,10 @@ async function renderHintAnswer(markdown) {
   const sections = parseHintSections(markdown);
 
   if (sections.length === 0) {
-    answerDiv.innerHTML = typeof marked !== 'undefined'
+    const fallbackContent = typeof marked !== 'undefined'
       ? marked.parse(markdown)
       : markdown;
+    await fadeUpdate(answerDiv, fallbackContent);
     return;
   }
 
@@ -457,6 +493,8 @@ async function renderHintAnswer(markdown) {
 
     const sectionDiv = document.createElement('div');
     sectionDiv.className = `hint-section ${isSolution ? 'hint-solution' : ''}`;
+    sectionDiv.setAttribute('role', 'region');
+    sectionDiv.setAttribute('aria-label', section.title);
 
     const header = document.createElement('div');
     header.className = 'hint-header';
@@ -471,8 +509,10 @@ async function renderHintAnswer(markdown) {
     // First section starts expanded, rest are collapsed
     if (index === 0) {
       sectionDiv.classList.add('expanded');
+      sectionDiv.setAttribute('aria-hidden', 'false');
     } else {
       sectionDiv.classList.add('collapsed');
+      sectionDiv.setAttribute('aria-hidden', 'true');
     }
 
     // Parse markdown content
@@ -497,12 +537,8 @@ async function renderHintAnswer(markdown) {
 
     // Reveal the section
     wrapper.classList.remove('collapsed');
-    wrapper.classList.add('expanded');
-
-    // Widen popup for solution readability
-    if (wrapper.classList.contains('hint-solution')) {
-      document.body.style.width = '520px';
-    }
+    wrapper.classList.add('expanded', 'just-revealed');
+    wrapper.setAttribute('aria-hidden', 'false');
 
     // Remove the clicked button
     clickedBtn.remove();
@@ -516,6 +552,7 @@ async function renderHintAnswer(markdown) {
       const newBtn = document.createElement('button');
       newBtn.className = 'hint-next-btn';
       newBtn.textContent = 'Show next hint';
+      newBtn.setAttribute('aria-label', `Reveal ${sections[nextIndex + 1].title}`);
       newBtn.addEventListener('click', () => revealNext(newBtn));
       wrapper.querySelector('.hint-header').appendChild(newBtn);
     }
@@ -536,12 +573,15 @@ async function renderHintAnswer(markdown) {
     const nextBtn = document.createElement('button');
     nextBtn.className = 'hint-next-btn';
     nextBtn.textContent = 'Show next hint';
+    nextBtn.setAttribute('aria-label', `Reveal ${sections[1].title}`);
     nextBtn.addEventListener('click', () => revealNext(nextBtn));
     sectionDivs[0].wrapper.querySelector('.hint-header').appendChild(nextBtn);
   }
 
-  answerDiv.innerHTML = '';
-  answerDiv.appendChild(container);
+  await fadeUpdate(answerDiv, () => {
+    answerDiv.textContent = '';
+    answerDiv.appendChild(container);
+  });
 
   // Render LaTeX for initially visible content
   if (typeof renderMathInElement !== 'undefined') {
@@ -592,9 +632,9 @@ async function loadSavedAnswer() {
     // Request still processing for this mode, show loading state
     const loading = document.getElementById('loading');
     loading.textContent = `Generating (${currentMode})... (you can close this popup)`;
-    loading.style.display = 'block';
-    document.getElementById('answer').innerHTML = '';
-    document.getElementById('buttonRow').style.display = 'none';
+    toggleVisibility(loading, true);
+    await fadeUpdate(document.getElementById('answer'), '');
+    toggleVisibility(document.getElementById('buttonRow'), false);
     console.log('✓ Showing loading UI for mode:', currentMode);
   } else if (data[storageKey]) {
     console.log('✓ Rendering saved answer');
@@ -625,7 +665,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
           getMode().then(currentMode => {
             updateModeUI(currentMode);
             if (currentMode === mode) {
-              document.getElementById('loading').style.display = 'none';
+              toggleVisibility(document.getElementById('loading'), false);
             }
           });
           continue;
@@ -648,7 +688,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
           if (changes[statusKey].newValue === 'complete') {
             console.log(`Status: complete for ${mode} - fetching answer`);
             loadingModes.delete(mode); // Remove from loading set
-            loading.style.display = 'none';
+            toggleVisibility(loading, false);
             const storageKey = `lastAnswer_${mode}`;
             chrome.storage.local.get([storageKey], (answerData) => {
               console.log(`Got answer from storage, mode: ${mode}, length:`, answerData[storageKey]?.length);
@@ -659,18 +699,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
           } else if (changes[statusKey].newValue === 'error') {
             console.log(`Status: error for ${mode}`);
             loadingModes.delete(mode); // Remove from loading set on error
-            loading.style.display = 'none';
+            toggleVisibility(loading, false);
             const storageKey = `lastAnswer_${mode}`;
             chrome.storage.local.get([storageKey], (answerData) => {
               const errorMsg = answerData[storageKey] || 'Error occurred';
-              document.getElementById('answer').innerHTML = `<span style="color: #dc2626;">${errorMsg}</span>`;
+              fadeUpdate(document.getElementById('answer'), `<span style="color: #dc2626;">${errorMsg}</span>`);
             });
           } else if (changes[statusKey].newValue === 'loading') {
             // This mode started loading - show loading if this is current mode
             loading.textContent = `Generating (${mode})... (you can close this popup)`;
-            loading.style.display = 'block';
-            document.getElementById('answer').innerHTML = '';
-            document.getElementById('buttonRow').style.display = 'none';
+            toggleVisibility(loading, true);
+            fadeUpdate(document.getElementById('answer'), '');
+            toggleVisibility(document.getElementById('buttonRow'), false);
           }
         });
       }
@@ -716,6 +756,7 @@ loadSavedAnswer();
 
 // Update UI to reflect current mode and loading states
 async function updateModeUI(mode) {
+  const answerDiv = document.getElementById('answer');
   modeOptions.forEach(opt => {
     const optMode = opt.dataset.mode;
     // Update active state
@@ -725,33 +766,32 @@ async function updateModeUI(mode) {
       opt.classList.remove('active');
     }
 
-    // Remove existing loading indicator
-    const existingIndicator = opt.querySelector('.loading-dot');
-    if (existingIndicator) existingIndicator.remove();
+    // Update ARIA attributes
+    opt.setAttribute('aria-selected', optMode === mode ? 'true' : 'false');
+    opt.setAttribute('tabindex', optMode === mode ? '0' : '-1');
 
-    // Add loading indicator if this mode is loading (from local state or storage)
+    // Update loading state via CSS class
+    opt.classList.remove('loading');
+
     const isLocallyLoading = loadingModes.has(optMode);
     if (isLocallyLoading) {
-      const dot = document.createElement('span');
-      dot.className = 'loading-dot';
-      dot.textContent = ' ⏳';
-      dot.style.fontSize = '10px';
-      opt.appendChild(dot);
+      opt.classList.add('loading');
     } else {
       // Also check storage for loading state (syncs across popup opens)
       const statusKey = `processingStatus_${optMode}`;
       chrome.storage.local.get([statusKey], (data) => {
         if (data[statusKey] === 'loading' && !loadingModes.has(optMode)) {
-          loadingModes.add(optMode); // Sync local state with storage
-          const dot = document.createElement('span');
-          dot.className = 'loading-dot';
-          dot.textContent = ' ⏳';
-          dot.style.fontSize = '10px';
-          opt.appendChild(dot);
+          loadingModes.add(optMode);
+          opt.classList.add('loading');
         }
       });
     }
   });
+
+  // Update answer panel's aria-labelledby to match active tab
+  if (answerDiv) {
+    answerDiv.setAttribute('aria-labelledby', `tab-${mode}`);
+  }
 }
 
 // Handle mode selection - also load saved answer or loading state for that mode
@@ -773,33 +813,32 @@ modeOptions?.forEach(opt => {
 
     // If we're switching back to a loading mode, show loading immediately
     if (isThisModeLoading) {
-      loading.style.display = 'block';
+      toggleVisibility(loading, true);
       loading.textContent = `Generating (${selectedMode})... (you can close this popup)`;
-      answerDiv.innerHTML = '';
-      document.body.style.width = '';
-      buttonRow.style.display = 'none';
+      await fadeUpdate(answerDiv, '');
+      toggleVisibility(buttonRow, false);
       return; // Don't check storage - we know it's loading
     }
 
     // Hide loading if the current mode is not loading
-    loading.style.display = 'none';
+    toggleVisibility(loading, false);
 
     // Check storage for saved answer or loading state
     chrome.storage.local.get([storageKey, statusKey], (data) => {
       if (data[statusKey] === 'loading') {
         // This mode is currently generating (from storage, update local state too)
         loadingModes.add(selectedMode);
-        loading.style.display = 'block';
+        toggleVisibility(loading, true);
         loading.textContent = `Generating (${selectedMode})... (you can close this popup)`;
-        answerDiv.innerHTML = '';
-        buttonRow.style.display = 'none';
+        fadeUpdate(answerDiv, '');
+        toggleVisibility(buttonRow, false);
       } else if (data[storageKey]) {
         // Show saved answer for this mode
         renderAnswer(data[storageKey], selectedMode);
       } else {
         // No saved answer for this mode, clear display
-        answerDiv.innerHTML = '';
-        buttonRow.style.display = 'none';
+        fadeUpdate(answerDiv, '');
+        toggleVisibility(buttonRow, false);
       }
     });
   });
@@ -807,6 +846,34 @@ modeOptions?.forEach(opt => {
 
 // Initialize mode selector
 initModeSelector();
+
+// Keyboard navigation for mode selector (WAI-ARIA tablist pattern)
+modeSelector?.addEventListener('keydown', (e) => {
+  const tabs = Array.from(modeSelector.querySelectorAll('[role="tab"]'));
+  const currentIndex = tabs.findIndex(t => t === document.activeElement);
+  if (currentIndex === -1) return;
+
+  let newIndex = -1;
+
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    newIndex = (currentIndex + 1) % tabs.length;
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    newIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  } else if (e.key === 'Home') {
+    e.preventDefault();
+    newIndex = 0;
+  } else if (e.key === 'End') {
+    e.preventDefault();
+    newIndex = tabs.length - 1;
+  }
+
+  if (newIndex >= 0) {
+    tabs[newIndex].click();
+    tabs[newIndex].focus();
+  }
+});
 
 // Clear button handler - clears current mode's answer
 document.getElementById('clearBtn').addEventListener('click', async () => {
@@ -818,11 +885,10 @@ document.getElementById('clearBtn').addEventListener('click', async () => {
   loadingModes.delete(currentMode);
 
   // Update UI immediately
-  document.getElementById('answer').innerHTML = '';
-  document.body.style.width = '';
-  document.getElementById('loading').style.display = 'none';
+  await fadeUpdate(document.getElementById('answer'), '');
+  toggleVisibility(document.getElementById('loading'), false);
   document.getElementById('loading').textContent = 'Loading...';
-  document.getElementById('buttonRow').style.display = 'none';
+  toggleVisibility(document.getElementById('buttonRow'), false);
 
   // Clear storage for this mode
   await chrome.storage.local.remove([storageKey, statusKey, 'lastAnswerTime', 'pendingMode']);
@@ -852,10 +918,10 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
   const currentMode = await getMode();
   loadingModes.add(currentMode); // Track that this mode is now loading
 
-  loading.style.display = 'block';
+  toggleVisibility(loading, true);
   loading.textContent = 'Loading...';
-  answerDiv.innerHTML = '';
-  buttonRow.style.display = 'none';
+  await fadeUpdate(answerDiv, '');
+  toggleVisibility(buttonRow, false);
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -888,8 +954,8 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     loading.textContent = `Generating (${currentMode})... (you can close this popup)`;
   } catch (e) {
     console.error('Error:', e);
-    answerDiv.innerHTML = `<span style="color: #dc2626;">Error: ${e.message || e}</span>`;
-    loading.style.display = 'none';
+    await fadeUpdate(answerDiv, `<span style="color: #dc2626;">Error: ${e.message || e}</span>`);
+    toggleVisibility(loading, false);
     loadingModes.delete(currentMode); // Clear loading state on error
   }
 });
