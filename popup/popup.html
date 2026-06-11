@@ -6,6 +6,8 @@
   <link rel="stylesheet" href="popup.css">
   <script src="../theme.js"></script>
   <script src="marked.min.js"></script>
+  <script src="highlight.min.js"></script>
+  <link rel="stylesheet" href="highlight-js/github-dark.min.css">
   <!-- KaTeX for LaTeX math rendering -->
   <link rel="stylesheet" href="katex/katex.min.css">
   <script src="katex.min.js"></script>
@@ -56,11 +58,20 @@
       border-radius: 8px;
       overflow-x: auto;
       margin: 8px 0;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      tab-size: 2;
     }
     #answer pre code {
       background: transparent;
       padding: 0;
       color: inherit;
+    }
+    /* Reset hljs theme defaults so #answer pre controls background/padding */
+    #answer pre code.hljs {
+      background: transparent;
+      padding: 0;
     }
     #answer strong { font-weight: 600; }
     #answer em { font-style: italic; }
@@ -252,6 +263,7 @@
     ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
     /* Dark mode overrides */
+    :root.dark #answer pre,
     :root.dark #answer code {
       background: #374151;
     }
@@ -300,6 +312,29 @@
     :root.dark #loading.visible { color: #9ca3af; }
     :root.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
     :root.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    /* Copy button (replaces inline JS styling) */
+    .copy-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: #4b5563;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      cursor: pointer;
+      z-index: 1;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #answer pre:hover .copy-btn,
+    #answer pre:focus-within .copy-btn {
+      opacity: 1;
+    }
+    :root.dark .copy-btn {
+      background: #6b7280;
+    }
   </style>
 </head>
 <body>
