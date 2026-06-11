@@ -20,6 +20,26 @@ const KATEX_DELIMITERS = [
   {left: '\\[', right: '\\]', display: true}
 ];
 
+// Configure marked to use highlight.js for syntax coloring
+// marked v15+ uses renderer override, not the legacy setOptions({ highlight })
+marked.use({
+  renderer: {
+    code({ text, lang }) {
+      if (typeof hljs !== 'undefined') {
+        const language = lang && hljs.getLanguage(lang) ? lang : undefined;
+        const highlighted = language
+          ? hljs.highlight(text, { language }).value
+          : hljs.highlightAuto(text).value;
+        const langClass = language ? ` language-${language}` : '';
+        return `<pre><code class="hljs${langClass}">${highlighted}</code></pre>`;
+      }
+      // Fallback: plain code without highlighting
+      const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<pre><code>${escaped}</code></pre>`;
+    }
+  }
+});
+
 // Crossfade content update: fade out, update content, fade in.
 // Cancels any in-flight fade via stored timer ID.
 // Duration matches the CSS transition (0.15s) so swap happens when fully invisible.
@@ -387,31 +407,6 @@ function addCopyButtons(root = document.getElementById('answer')) {
     // Style the pre element to position the button
     pre.style.position = 'relative';
     pre.style.paddingRight = '40px'; // Make room for the button
-
-    // Style the button
-    Object.assign(copyBtn.style, {
-      position: 'absolute',
-      top: '4px',
-      right: '4px',
-      background: '#4b5563',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      padding: '2px 6px',
-      fontSize: '11px',
-      cursor: 'pointer',
-      zIndex: '1',
-      opacity: '0',
-      transition: 'opacity 0.2s'
-    });
-
-    // Show button on hover
-    pre.addEventListener('mouseenter', () => {
-      copyBtn.style.opacity = '1';
-    });
-    pre.addEventListener('mouseleave', () => {
-      copyBtn.style.opacity = '0';
-    });
 
     pre.appendChild(copyBtn);
   });
