@@ -7,9 +7,16 @@ A Chrome extension that uses AI to help debug failed LeetCode solutions. Get int
 
 ## Features
 
-- **One-click debugging**: Simply click the extension popup on any LeetCode problem page
+- **Three response modes**: Choose between **Debug** (root cause + fix), **Hint** (progressive 5-level reveal, default), and **Interview** (FAANG-style coaching)
+- **Progressive hint system**: Hint mode reveals one clue at a time — from a subtle nudge to the full solution — with "Show next hint" buttons and progress dots
 - **Multiple AI providers**: Support for OpenAI, Anthropic (Claude), Google Gemini, and custom OpenAI-compatible endpoints
+- **Syntax highlighting**: Code blocks in AI responses are highlighted with highlight.js
+- **LaTeX math rendering**: Formulas like `O(n log n)` render beautifully via KaTeX
+- **One-click copy**: Copy buttons appear on hover for every code block in responses
+- **Dark mode**: System/light/dark theme toggle that syncs across popup and settings
 - **Smart extraction**: Automatically extracts your code, problem title, and test results from the page
+- **Answer persistence**: Close the popup during generation — answers are saved per-mode and restored when you reopen
+- **Test Connection**: Verify your API credentials from the settings page before saving
 - **Local-first**: API keys stored locally on your device, no third-party tracking
 
 ## Installation for Users
@@ -90,17 +97,23 @@ LeetcodeDebugAssistant/
 ├── tailwind.config.js  # Tailwind CSS configuration
 ├── popup/
 │   ├── popup.html      # Popup UI
-│   ├── popup.js        # Popup logic
+│   ├── popup.js        # Popup logic (3 response modes, hint reveal)
 │   ├── popup.css       # Compiled Tailwind styles
 │   ├── tw.css          # Tailwind source
 │   ├── marked.min.js   # Markdown renderer (vendored)
-│   ├── katex.min.js    # LaTeX math renderer (vendored)
-│   ├── auto-render.min.js  # KaTeX auto-render (vendored)
+│   ├── highlight.min.js       # Syntax highlighter (vendored)
+│   ├── highlight-js/
+│   │   └── github-dark.min.css # highlight.js theme (vendored)
+│   ├── katex.min.js           # LaTeX math renderer (vendored)
+│   ├── auto-render.min.js     # KaTeX auto-render (vendored)
 │   └── katex/
-│       └── katex.min.css   # KaTeX styles
+│       └── katex.min.css      # KaTeX styles
 ├── options/
 │   ├── options.html    # Settings page
 │   └── options.js      # Settings logic
+├── shared/
+│   ├── providers.js    # Single-source provider metadata (names, endpoints, defaults)
+│   └── selectors.js    # Single-source LeetCode DOM selectors
 ├── icon/               # Extension icons (16/48/128px)
 ├── PRIVACY.md          # Privacy policy
 └── README.md           # This file
@@ -110,30 +123,39 @@ LeetcodeDebugAssistant/
 
 ```
 popup.js ──GET_DATA──> content.js ──{title, code, result}──> popup.js
-                                                               │
-                                                               ▼
-popup.js ──GET_ADVICE (prompt)──> background.js    ──    AI Provider API
-                                                               │
-                                                               ▼
-popup.js <───────────────────────────{ok, answer/error}────────┘
+                                                              │
+                                                              ▼
+popup.js ──GET_ADVICE (prompt, mode)──> background.js ──{ok, processing: true}
+                                                              │
+                                              background.js writes to chrome.storage
+                                                              │
+popup.js <──chrome.storage.onChanged───lastAnswer_${mode}─────┘
 ```
+
+The architecture is asynchronous: the background service worker returns immediately, then writes results to `chrome.storage.local` with per-mode keys. The popup listens for storage changes to render results — this allows the popup to be closed and reopened while generation is in progress.
 
 ## Roadmap
 
 Potential future improvements:
 
 - [ ] Support for more AI providers
-- [ ] Chat history / conversation mode
-- [ ] Dark mode for the popup
-- [ ] Keyboard shortcuts
+- [ ] Conversational chat mode (follow-up questions within a session)
+- [ ] Keyboard shortcuts for common actions
 - [ ] Support for more coding platforms (Codeforces, AtCoder, etc.)
+- [x] ~~Dark mode for the popup~~ — implemented with system/light/dark toggle
 
 ## Usage for Users
 
 1. Navigate to any LeetCode problem (leetcode.com or leetcode.cn)
 2. Write and run your solution (use the "Run" button to get test results)
 3. Click the LeetCode Debug Assistant extension icon
-4. Click "Get Debug Advice" to receive AI-powered debugging suggestions
+4. Choose a response mode using the tab selector at the top:
+   - **Hint** (default): Progressive clues revealed one at a time. Click "Show next hint" to advance from a subtle nudge through the full solution.
+   - **Debug**: Identifies the root cause, shows a minimal fix, and provides corrected code.
+   - **Interview**: FAANG-style coaching with problem classification, brute-force analysis, optimized approach, trade-off discussion, and follow-up questions.
+5. Click the action button to generate a response
+
+Answers are saved per-mode — switch between modes without losing previous results.
 
 ### Setting Up Your AI Provider
 
@@ -146,10 +168,11 @@ Potential future improvements:
 
 3. Enter your API key and configure optional settings:
    - **Endpoint**: API endpoint URL (pre-filled for default providers)
-   - **Model**: Model name (e.g., `gpt-4`, `claude-3-opus-20240229`)
-   - **Temperature**: Controls response randomness (0.0 - 1.0)
+   - **Model**: Model name (e.g., `gpt-4o-mini`, `claude-3-5-sonnet-20241022`)
+   - **Temperature**: Controls response randomness (0.0 - 2.0)
 
-4. Click **Save**
+4. Click **Test Connection** to verify your credentials work before saving
+5. Click **Save**
 
 ## Privacy
 
