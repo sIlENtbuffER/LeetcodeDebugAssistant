@@ -264,6 +264,37 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    /* Action bar */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    #analyzeBtn {
+      border-radius: 6px;
+    }
+    #clearBtn {
+      background: none;
+      border: none;
+      color: #6b7280;
+      padding: 4px 0;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    #clearBtn:hover {
+      color: #ef4444;
+      text-decoration: underline;
+    }
+    #clearBtn:focus-visible {
+      outline: 2px solid #6b7280;
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
     /* Dark mode overrides */
     :root.dark #answer pre,
     :root.dark #answer code {
@@ -314,6 +345,12 @@
     :root.dark #loading.visible { color: #9ca3af; }
     :root.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
     :root.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    :root.dark #clearBtn {
+      color: #9ca3af;
+    }
+    :root.dark #clearBtn:hover {
+      color: #f87171;
+    }
     /* Copy button (replaces inline JS styling) */
     .copy-btn {
       position: absolute;
@@ -360,12 +397,12 @@
     <div class="mode-option active" data-mode="hint" role="tab" tabindex="0" aria-selected="true" id="tab-hint" aria-controls="answer">Hint</div>
     <div class="mode-option" data-mode="interview" role="tab" tabindex="-1" aria-selected="false" id="tab-interview" aria-controls="answer">Interview</div>
   </div>
-  <button id="analyzeBtn" type="button" aria-label="Analyze code"
-  class="rounded-sm bg-indigo-600 px-3 py-1 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
- Debug</button>
-  <button id="clearBtn" type="button" aria-label="Clear current answer"
-  class="rounded-sm bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-sm hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">
- Clear</button>
+  <div class="action-bar">
+    <button id="clearBtn" type="button" aria-label="Clear current answer">Clear</button>
+    <button id="analyzeBtn" type="button" aria-label="Analyze code"
+    class="bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+   Debug</button>
+  </div>
   <div id="loading" role="status" aria-live="polite">Loading...</div>
   <div id="answer" role="tabpanel" aria-labelledby="tab-hint"></div>
   <div class="button-row" id="buttonRow">
