@@ -470,6 +470,37 @@ async function renderHintAnswer(markdown) {
     sectionDivs.push({ wrapper: sectionDiv, content });
   });
 
+  // Scroll to a hint section after its expand transition finishes
+  function scrollToHint(wrapper, content) {
+    let handled = false;
+
+    function doScroll() {
+      if (handled) return;
+      handled = true;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const fitsInViewport = wrapper.offsetHeight < document.documentElement.clientHeight;
+      wrapper.scrollIntoView({
+        behavior: reducedMotion ? 'auto' : 'smooth',
+        block: fitsInViewport ? 'center' : 'start'
+      });
+    }
+
+    function onTransitionEnd(e) {
+      if (e.propertyName === 'max-height') {
+        content.removeEventListener('transitionend', onTransitionEnd);
+        doScroll();
+      }
+    }
+
+    content.addEventListener('transitionend', onTransitionEnd);
+
+    // Fallback if transitionend is suppressed (e.g. prefers-reduced-motion)
+    setTimeout(() => {
+      content.removeEventListener('transitionend', onTransitionEnd);
+      doScroll();
+    }, 350);
+  }
+
   // Reveal the next collapsed section
   function revealNext(clickedBtn) {
     const nextIndex = revealedCount;
@@ -510,6 +541,8 @@ async function renderHintAnswer(markdown) {
     }
 
     addCopyButtons(wrapper);
+
+    scrollToHint(wrapper, content);
   }
 
   // Add "Show next hint" to the first section initially

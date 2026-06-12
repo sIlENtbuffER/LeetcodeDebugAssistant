@@ -170,6 +170,7 @@
       border: 1px solid #e5e7eb;
       border-radius: 8px;
       overflow: hidden;
+      scroll-margin-top: 12px;
     }
     .hint-section.collapsed {
       background: #f3f4f6;
@@ -264,6 +265,10 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    @media (prefers-reduced-motion: reduce) {
+      .hint-content { transition: none; }
+      .hint-section.just-revealed { animation: none; }
+    }
     /* Action bar */
     .action-bar {
       display: flex;
