@@ -5,6 +5,8 @@
   <title>LeetCode Debug Assistant</title>
   <link rel="stylesheet" href="popup.css">
   <script src="../theme.js"></script>
+  <script src="../shared/providers.js"></script>
+  <script src="../shared/selectors.js"></script>
   <script src="marked.min.js"></script>
   <script src="highlight.min.js"></script>
   <link rel="stylesheet" href="highlight-js/github-dark.min.css">
@@ -334,6 +336,16 @@
     }
     :root.dark .copy-btn {
       background: #6b7280;
+    }
+    .copy-btn.copied {
+      background: #22c55e !important;
+    }
+    pre.has-copy-btn {
+      position: relative;
+      padding-right: 40px;
+    }
+    .error-text {
+      color: #dc2626;
     }
   </style>
 </head>

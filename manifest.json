@@ -13,8 +13,7 @@
       "https://*/*"
     ],
     "background": {
-      "service_worker": "background.js",
-      "type": "module"
+      "service_worker": "background.js"
     },
     "options_page": "options/options.html",
     "action": {
@@ -24,7 +23,7 @@
     "content_scripts": [
       {
         "matches": ["https://leetcode.cn/*", "https://leetcode.com/*"],
-        "js": ["content.js"],
+        "js": ["shared/selectors.js", "content.js"],
         "run_at": "document_end"
       }
     ],
