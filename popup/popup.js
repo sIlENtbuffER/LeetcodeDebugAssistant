@@ -1,13 +1,5 @@
 // popup.js
 
-// Provider names for display
-const PROVIDER_NAMES = {
-  openai: 'OpenAI',
-  anthropic: 'Claude',
-  google: 'Gemini',
-  custom: 'Custom'
-};
-
 // Response modes
 const MODES = ['debug', 'hint', 'interview'];
 const DEFAULT_MODE = 'hint';
@@ -246,47 +238,6 @@ Be concise.
 Avoid giving away too much too early.
 ${formatInstructions}`;
 
-    case 'learn':
-      return `You are a senior algorithm tutor and debugging assistant.
-
-Problem: ${title}
-
-User code:
-\`\`\`
-${code}
-\`\`\`
-
-Run result / error:
-${result}
-
-Help the user learn from this failure. Return your response in markdown with exactly these sections:
-
-### Diagnosis
-What's wrong? Classify the issue: logic bug, edge case, complexity issue, data structure misuse, or incorrect algorithm choice.
-
-### Pattern Recognition
-What algorithmic pattern/category does this problem belong to?
-
-### Recommended Solution
-Explain the intuition, outline the steps, then provide clean code with time and space complexity (use LaTeX like $O(n)$).
-
-### Alternative Approaches
-Mention other valid approaches only if they provide different tradeoffs.
-
-### Edge Cases to Watch
-List the edge cases that commonly fail for this problem.
-
-### Takeaway
-2-4 bullets to help recognize this pattern in future problems.
-
-Be concise but educational.
-${formatInstructions}
-
-Example format:
-### Diagnosis
-The code fails because...
-### Pattern Recognition
-This is a classic...`;
   }
 }
 
@@ -294,7 +245,7 @@ This is a classic...`;
 chrome.storage.local.get({ activeProvider: 'openai' }, ({ activeProvider }) => {
   const badge = document.getElementById('providerBadge');
   if (badge) {
-    badge.textContent = PROVIDER_NAMES[activeProvider] || 'Unknown';
+    badge.textContent = PROVIDER_META[activeProvider]?.displayName || 'Unknown';
   }
 });
 
@@ -312,21 +263,19 @@ const sendToContent = (tabId, msg) =>
 async function grabViaInjection(tabId) {
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId },
-    func: () => {
-      function grabData() {
-        const title = document.querySelector('[data-cy="question-title"]')?.innerText
-          || document.querySelector('.question-title h3')?.innerText
-          || document.title || 'unknown question';
-        const monaco = document.querySelector('.monaco-editor');
-        let code = '';
-        if (monaco) code = monaco.querySelector('.view-lines')?.innerText || '';
-        const resultArea = document.querySelector('[data-cy="run-result-fail"]')
-          || document.querySelector('[data-cy="run-result-success"]');
-        const result = resultArea?.innerText || '';
-        return { title, code, result };
-      }
-      return grabData();
-    }
+    func: (selectors) => {
+      const title = selectors.title.reduce(
+        (found, sel) => found || document.querySelector(sel)?.innerText, null
+      ) || document.title || 'unknown question';
+      const monaco = document.querySelector(selectors.codeEditor);
+      const code = monaco ? (monaco.querySelector(selectors.code)?.innerText || '') : '';
+      const resultArea = selectors.result.reduce(
+        (found, sel) => found || document.querySelector(sel), null
+      );
+      const result = resultArea?.innerText || '';
+      return { title, code, result };
+    },
+    args: [LC_SELECTORS]
   });
   return result;
 }
@@ -380,7 +329,6 @@ function addCopyButtons(root = document.getElementById('answer')) {
     // Create copy button
     const copyBtn = document.createElement('button');
     copyBtn.className = 'copy-btn';
-    copyBtn.innerHTML = '📋';
     copyBtn.title = 'Copy code';
     copyBtn.textContent = 'Copy';
 
@@ -390,23 +338,20 @@ function addCopyButtons(root = document.getElementById('answer')) {
       try {
         await navigator.clipboard.writeText(code);
         copyBtn.textContent = '✓';
-        copyBtn.style.background = '#22c55e';
+        copyBtn.classList.add('copied');
         setTimeout(() => {
           copyBtn.textContent = 'Copy';
-          copyBtn.style.background = '';
+          copyBtn.classList.remove('copied');
         }, 1500);
       } catch (err) {
         copyBtn.textContent = '✗';
         setTimeout(() => {
           copyBtn.textContent = 'Copy';
-          copyBtn.style.background = '';
         }, 1500);
       }
     });
 
-    // Style the pre element to position the button
-    pre.style.position = 'relative';
-    pre.style.paddingRight = '40px'; // Make room for the button
+    pre.classList.add('has-copy-btn');
 
     pre.appendChild(copyBtn);
   });
@@ -624,10 +569,11 @@ async function loadSavedAnswer() {
   }
   console.log('loadingModes after restore:', Array.from(loadingModes));
 
-  const data = await chrome.storage.local.get({ [storageKey]: null, [statusKey]: null });
-  console.log('Current mode data:', { [storageKey]: data[storageKey]?.substring?.(0, 50), [statusKey]: data[statusKey] });
+  const answer = allData[storageKey];
+  const status = allData[statusKey];
+  console.log('Current mode data:', { [storageKey]: answer?.substring?.(0, 50), [statusKey]: status });
 
-  if (data[statusKey] === 'loading') {
+  if (status === 'loading') {
     // Request still processing for this mode, show loading state
     const loading = document.getElementById('loading');
     loading.textContent = `Generating (${currentMode})... (you can close this popup)`;
@@ -635,9 +581,9 @@ async function loadSavedAnswer() {
     await fadeUpdate(document.getElementById('answer'), '');
     toggleVisibility(document.getElementById('buttonRow'), false);
     console.log('✓ Showing loading UI for mode:', currentMode);
-  } else if (data[storageKey]) {
+  } else if (answer) {
     console.log('✓ Rendering saved answer');
-    renderAnswer(data[storageKey], currentMode);
+    renderAnswer(answer, currentMode);
   } else {
     console.log('✓ No saved answer for this mode');
   }
@@ -650,7 +596,9 @@ async function loadSavedAnswer() {
 // Watch for storage changes (result completed while popup was closed)
 chrome.storage.onChanged.addListener((changes, area) => {
   console.log('Storage changed:', area, Object.keys(changes));
-  if (area === 'local') {
+  if (area !== 'local') return;
+
+  getMode().then(currentMode => {
     // Check for completion or error status for any mode
     for (const mode of MODES) {
       const statusKey = `processingStatus_${mode}`;
@@ -661,57 +609,50 @@ chrome.storage.onChanged.addListener((changes, area) => {
         // If status was removed (undefined), it means cancelled - clean up
         if (statusValue === undefined) {
           loadingModes.delete(mode);
-          getMode().then(currentMode => {
-            updateModeUI(currentMode);
-            if (currentMode === mode) {
-              toggleVisibility(document.getElementById('loading'), false);
-            }
-          });
+          updateModeUI(currentMode);
+          if (currentMode === mode) {
+            toggleVisibility(document.getElementById('loading'), false);
+          }
           continue;
         }
 
         // Always update mode selector indicators
-        getMode().then(currentMode => {
-          updateModeUI(currentMode);
-        });
+        updateModeUI(currentMode);
 
         // Only update main UI if this is the currently selected mode
-        getMode().then(currentMode => {
-          if (currentMode !== mode) {
-            console.log(`Skipping main UI update - current mode is ${currentMode}, status change is for ${mode}`);
-            return;
-          }
+        if (currentMode !== mode) {
+          console.log(`Skipping main UI update - current mode is ${currentMode}, status change is for ${mode}`);
+          continue;
+        }
 
-          const loading = document.getElementById('loading');
+        const loading = document.getElementById('loading');
 
-          if (changes[statusKey].newValue === 'complete') {
-            console.log(`Status: complete for ${mode} - fetching answer`);
-            loadingModes.delete(mode); // Remove from loading set
-            toggleVisibility(loading, false);
-            const storageKey = `lastAnswer_${mode}`;
-            chrome.storage.local.get([storageKey], (answerData) => {
-              console.log(`Got answer from storage, mode: ${mode}, length:`, answerData[storageKey]?.length);
-              if (answerData[storageKey]) {
-                renderAnswer(answerData[storageKey], mode);
-              }
-            });
-          } else if (changes[statusKey].newValue === 'error') {
-            console.log(`Status: error for ${mode}`);
-            loadingModes.delete(mode); // Remove from loading set on error
-            toggleVisibility(loading, false);
-            const storageKey = `lastAnswer_${mode}`;
-            chrome.storage.local.get([storageKey], (answerData) => {
-              const errorMsg = answerData[storageKey] || 'Error occurred';
-              fadeUpdate(document.getElementById('answer'), `<span style="color: #dc2626;">${errorMsg}</span>`);
-            });
-          } else if (changes[statusKey].newValue === 'loading') {
-            // This mode started loading - show loading if this is current mode
-            loading.textContent = `Generating (${mode})... (you can close this popup)`;
-            toggleVisibility(loading, true);
-            fadeUpdate(document.getElementById('answer'), '');
-            toggleVisibility(document.getElementById('buttonRow'), false);
-          }
-        });
+        if (statusValue === 'complete') {
+          console.log(`Status: complete for ${mode} - fetching answer`);
+          loadingModes.delete(mode);
+          toggleVisibility(loading, false);
+          const storageKey = `lastAnswer_${mode}`;
+          chrome.storage.local.get([storageKey], (answerData) => {
+            console.log(`Got answer from storage, mode: ${mode}, length:`, answerData[storageKey]?.length);
+            if (answerData[storageKey]) {
+              renderAnswer(answerData[storageKey], mode);
+            }
+          });
+        } else if (statusValue === 'error') {
+          console.log(`Status: error for ${mode}`);
+          loadingModes.delete(mode);
+          toggleVisibility(loading, false);
+          const storageKey = `lastAnswer_${mode}`;
+          chrome.storage.local.get([storageKey], (answerData) => {
+            const errorMsg = answerData[storageKey] || 'Error occurred';
+            fadeUpdate(document.getElementById('answer'), `<span class="error-text">${errorMsg}</span>`);
+          });
+        } else if (statusValue === 'loading') {
+          loading.textContent = `Generating (${mode})... (you can close this popup)`;
+          toggleVisibility(loading, true);
+          fadeUpdate(document.getElementById('answer'), '');
+          toggleVisibility(document.getElementById('buttonRow'), false);
+        }
       }
     }
 
@@ -719,20 +660,17 @@ chrome.storage.onChanged.addListener((changes, area) => {
     for (const mode of MODES) {
       const key = `lastAnswer_${mode}`;
       if (changes[key]?.newValue) {
-        getMode().then(currentMode => {
-          if (currentMode === mode) {
-            // Check if this mode is not currently loading
-            const statusKey = `processingStatus_${mode}`;
-            chrome.storage.local.get([statusKey], (statusData) => {
-              if (statusData[statusKey] !== 'loading') {
-                renderAnswer(changes[key].newValue, mode);
-              }
-            });
-          }
-        });
+        if (currentMode === mode) {
+          const statusKey = `processingStatus_${mode}`;
+          chrome.storage.local.get([statusKey], (statusData) => {
+            if (statusData[statusKey] !== 'loading') {
+              renderAnswer(changes[key].newValue, mode);
+            }
+          });
+        }
       }
     }
-  }
+  });
 });
 
 // Track which modes are currently loading (supports parallel generation)
@@ -953,7 +891,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     loading.textContent = `Generating (${currentMode})... (you can close this popup)`;
   } catch (e) {
     console.error('Error:', e);
-    await fadeUpdate(answerDiv, `<span style="color: #dc2626;">Error: ${e.message || e}</span>`);
+    await fadeUpdate(answerDiv, `<span class="error-text">Error: ${e.message || e}</span>`);
     toggleVisibility(loading, false);
     loadingModes.delete(currentMode); // Clear loading state on error
   }

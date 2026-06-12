@@ -1,86 +1,73 @@
 // background.js
 
-// Provider configurations with their API formats
-const PROVIDERS = {
-  openai: {
-    name: 'OpenAI',
-    defaultEndpoint: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-4o-mini',
-    needsEndpoint: true,
-    formatRequest: ({ apiKey, endpoint, model, temperature, prompt }) => ({
-      url: `${endpoint.replace(/\/+$/, '')}/chat/completions`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+// Load shared provider metadata (PROVIDER_META global)
+importScripts('shared/providers.js');
+
+// Provider-specific API request formatters (unique to background)
+const FORMAT_REQUEST = {
+  openai: ({ apiKey, endpoint, model, temperature, prompt }) => ({
+    url: `${endpoint.replace(/\/+$/, '')}/chat/completions`,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: {
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature
+    },
+    extractAnswer: (json) => json?.choices?.[0]?.message?.content
+  }),
+  anthropic: ({ apiKey, model, temperature, prompt }) => ({
+    url: 'https://api.anthropic.com/v1/messages',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    body: {
+      model,
+      max_tokens: 4096,
+      system: 'You are a senior LeetCode debugger.',
+      messages: [{ role: 'user', content: prompt }],
+      temperature
+    },
+    extractAnswer: (json) => json?.content?.[0]?.text
+  }),
+  google: ({ apiKey, endpoint, model, temperature, prompt }) => {
+    const baseUrl = endpoint.replace(/\/+$/, '');
+    return {
+      url: `${baseUrl}/models/${model}:generateContent?key=${apiKey}`,
+      headers: { 'Content-Type': 'application/json' },
       body: {
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature }
       },
-      extractAnswer: (json) => json?.choices?.[0]?.message?.content
-    })
+      extractAnswer: (json) => json?.candidates?.[0]?.content?.parts?.[0]?.text
+    };
   },
-  anthropic: {
-    name: 'Anthropic',
-    defaultEndpoint: 'https://api.anthropic.com/v1',
-    defaultModel: 'claude-3-5-sonnet-20241022',
-    needsEndpoint: false,
-    formatRequest: ({ apiKey, model, temperature, prompt }) => ({
-      url: 'https://api.anthropic.com/v1/messages',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: {
-        model,
-        max_tokens: 4096,
-        system: 'You are a senior LeetCode debugger.',
-        messages: [{ role: 'user', content: prompt }],
-        temperature
-      },
-      extractAnswer: (json) => json?.content?.[0]?.text
-    })
-  },
-  google: {
-    name: 'Google Gemini',
-    defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
-    defaultModel: 'gemini-2.0-flash-exp',
-    needsEndpoint: true,
-    formatRequest: ({ apiKey, endpoint, model, temperature, prompt }) => {
-      const baseUrl = endpoint.replace(/\/+$/, '');
-      return {
-        url: `${baseUrl}/models/${model}:generateContent?key=${apiKey}`,
-        headers: { 'Content-Type': 'application/json' },
-        body: {
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature }
-        },
-        extractAnswer: (json) => json?.candidates?.[0]?.content?.parts?.[0]?.text
-      };
-    }
-  },
-  custom: {
-    name: 'Custom (OpenAI-compatible)',
-    defaultEndpoint: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-4o-mini',
-    needsEndpoint: true,
-    formatRequest: ({ apiKey, endpoint, model, temperature, prompt }) => ({
-      url: `${endpoint.replace(/\/+$/, '')}/chat/completions`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: {
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature
-      },
-      extractAnswer: (json) => json?.choices?.[0]?.message?.content
-    })
-  }
+  custom: ({ apiKey, endpoint, model, temperature, prompt }) => ({
+    url: `${endpoint.replace(/\/+$/, '')}/chat/completions`,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: {
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature
+    },
+    extractAnswer: (json) => json?.choices?.[0]?.message?.content
+  })
 };
+
+// Merge metadata + formatters into full PROVIDERS object
+const PROVIDERS = Object.fromEntries(
+  Object.keys(PROVIDER_META).map(id => [
+    id,
+    { ...PROVIDER_META[id], formatRequest: FORMAT_REQUEST[id] }
+  ])
+);
 
 async function getProviderConfig() {
   const data = await chrome.storage.local.get({
@@ -102,8 +89,9 @@ async function getProviderConfig() {
   };
 }
 
-async function callChatCompletion({ prompt }) {
-  const { providerConfig, apiKey, endpoint, model, temperature } = await getProviderConfig();
+async function callChatCompletion({ prompt, configOverride }) {
+  const { providerConfig, apiKey, endpoint, model, temperature } =
+    configOverride || (await getProviderConfig());
 
   if (!apiKey) {
     throw new Error(`No API key set for ${providerConfig.name}. Go to the extension Options and add your key.`);
@@ -134,7 +122,7 @@ async function callChatCompletion({ prompt }) {
 }
 
 // Process a request in background and save result to storage (mode-specific)
-async function processRequestInBackground(prompt, mode = 'learn') {
+async function processRequestInBackground(prompt, mode = 'hint') {
   const storageKey = `lastAnswer_${mode}`;
   const statusKey = `processingStatus_${mode}`;
 
@@ -162,10 +150,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'TEST_CONNECTION') {
     (async () => {
       try {
+        const configOverride = msg.config
+          ? {
+              providerConfig: PROVIDERS[msg.providerId || 'openai'],
+              apiKey: msg.config.apiKey,
+              endpoint: msg.config.endpoint,
+              model: msg.config.model,
+              temperature: msg.config.temperature
+            }
+          : null;
+
         await callChatCompletion({
-          prompt: 'Reply with just "OK" if you receive this.'
+          prompt: 'Reply with just "OK" if you receive this.',
+          configOverride
         });
-        const config = await getProviderConfig();
+        const config = configOverride || (await getProviderConfig());
         sendResponse({ ok: true, model: config.model });
       } catch (err) {
         sendResponse({ ok: false, error: String(err.message || err) });
@@ -176,10 +175,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg?.type === 'GET_ADVICE') {
     console.log('[Background] Received GET_ADVICE, mode:', msg.mode);
-    // Start processing in background (fire and forget - will save to storage)
     processRequestInBackground(msg.prompt, msg.mode);
     sendResponse({ ok: true, processing: true });
-    return; // synchronous response
+    return;
   }
 });
 

@@ -1,40 +1,6 @@
 // options.js
 
-// Provider definitions (must match background.js)
-const PROVIDERS = {
-  openai: {
-    name: 'OpenAI',
-    desc: 'ChatGPT and GPT models',
-    defaultEndpoint: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-4o-mini',
-    needsEndpoint: true,
-    modelHint: 'e.g., gpt-4o-mini, gpt-4o, o1'
-  },
-  anthropic: {
-    name: 'Anthropic',
-    desc: 'Claude models',
-    defaultEndpoint: 'https://api.anthropic.com/v1',
-    defaultModel: 'claude-3-5-sonnet-20241022',
-    needsEndpoint: false,
-    modelHint: 'e.g., claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022'
-  },
-  google: {
-    name: 'Google',
-    desc: 'Gemini models',
-    defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
-    defaultModel: 'gemini-2.0-flash-exp',
-    needsEndpoint: true,
-    modelHint: 'e.g., gemini-2.0-flash-exp, gemini-1.5-pro'
-  },
-  custom: {
-    name: 'Custom',
-    desc: 'OpenAI-compatible API',
-    defaultEndpoint: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-4o-mini',
-    needsEndpoint: true,
-    modelHint: 'Any chat-completions model'
-  }
-};
+// PROVIDER_META loaded via <script src="../shared/providers.js"> in options.html
 
 const els = {
   providerSelect: document.getElementById('providerSelect'),
@@ -57,7 +23,7 @@ let allProvidersData = {};
 
 // Update UI based on selected provider
 function updateProviderUI(providerId) {
-  const provider = PROVIDERS[providerId];
+  const provider = PROVIDER_META[providerId];
   currentProvider = providerId;
 
   els.providerName.textContent = provider.name;
@@ -101,7 +67,7 @@ els.providerSelect.addEventListener('change', () => {
 });
 
 els.saveBtn.addEventListener('click', async () => {
-  const provider = PROVIDERS[currentProvider];
+  const provider = PROVIDER_META[currentProvider];
   const savedData = allProvidersData[currentProvider] || {};
 
   // Handle API key masking
@@ -124,24 +90,23 @@ els.saveBtn.addEventListener('click', async () => {
   setTimeout(() => (els.status.textContent = ''), 2000);
 });
 
-// Test connection button
+// Test connection — passes config directly to background (no storage mutation)
 els.testBtn.addEventListener('click', async () => {
-  const provider = PROVIDERS[currentProvider];
+  const provider = PROVIDER_META[currentProvider];
   const savedData = allProvidersData[currentProvider] || {};
   const testKey = els.apiKey.value === '********' ? savedData.apiKey : els.apiKey.value.trim();
 
   if (!testKey) {
-    els.status.innerHTML = '<span class="error">Please enter an API key first.</span>';
+    els.status.textContent = 'Please enter an API key first.';
     return;
   }
 
   // Show loading state
   els.testBtn.disabled = true;
-  els.testBtn.innerHTML = '<span class="spinner"></span> Testing...';
-  els.status.innerHTML = '';
+  els.testBtn.textContent = 'Testing...';
+  els.status.textContent = '';
 
   try {
-    // Temporarily save test config to storage for background to use
     const testConfig = {
       endpoint: provider.needsEndpoint ? (els.endpoint.value.trim() || provider.defaultEndpoint) : provider.defaultEndpoint,
       model: els.model.value.trim() || provider.defaultModel,
@@ -149,35 +114,19 @@ els.testBtn.addEventListener('click', async () => {
       apiKey: testKey
     };
 
-    const data = await chrome.storage.local.get({ providers: {} });
-    const originalConfig = data.providers[currentProvider];
-
-    await chrome.storage.local.set({
-      activeProvider: currentProvider,
-      providers: { ...data.providers, [currentProvider]: testConfig }
-    });
-
-    // Send test request to background
     const response = await chrome.runtime.sendMessage({
       type: 'TEST_CONNECTION',
-      providerId: currentProvider
+      providerId: currentProvider,
+      config: testConfig
     });
 
-    // Restore original config
-    if (originalConfig) {
-      const restored = await chrome.storage.local.get({ providers: {} });
-      await chrome.storage.local.set({
-        providers: { ...restored.providers, [currentProvider]: originalConfig }
-      });
-    }
-
     if (response.ok) {
-      els.status.innerHTML = `<span class="success">✓ Connection successful! Model: ${response.model || testConfig.model}</span>`;
+      els.status.textContent = `Connection successful! Model: ${response.model || testConfig.model}`;
     } else {
-      els.status.innerHTML = `<span class="error">✗ Failed: ${response.error}</span>`;
+      els.status.textContent = `Failed: ${response.error}`;
     }
   } catch (err) {
-    els.status.innerHTML = `<span class="error">✗ Error: ${err.message}</span>`;
+    els.status.textContent = `Error: ${err.message}`;
   } finally {
     els.testBtn.disabled = false;
     els.testBtn.textContent = 'Test Connection';
